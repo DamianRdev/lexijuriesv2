@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VencimientosRouteImport } from './routes/vencimientos'
+import { Route as EquipoRouteImport } from './routes/equipo'
 import { Route as CausasRouteImport } from './routes/causas'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CausasIdRouteImport } from './routes/causas.$id'
@@ -17,6 +18,11 @@ import { Route as CausasIdRouteImport } from './routes/causas.$id'
 const VencimientosRoute = VencimientosRouteImport.update({
   id: '/vencimientos',
   path: '/vencimientos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquipoRoute = EquipoRouteImport.update({
+  id: '/equipo',
+  path: '/equipo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CausasRoute = CausasRouteImport.update({
@@ -38,12 +44,14 @@ const CausasIdRoute = CausasIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/causas': typeof CausasRouteWithChildren
+  '/equipo': typeof EquipoRoute
   '/vencimientos': typeof VencimientosRoute
   '/causas/$id': typeof CausasIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/causas': typeof CausasRouteWithChildren
+  '/equipo': typeof EquipoRoute
   '/vencimientos': typeof VencimientosRoute
   '/causas/$id': typeof CausasIdRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/causas': typeof CausasRouteWithChildren
+  '/equipo': typeof EquipoRoute
   '/vencimientos': typeof VencimientosRoute
   '/causas/$id': typeof CausasIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/causas' | '/vencimientos' | '/causas/$id'
+  fullPaths: '/' | '/causas' | '/equipo' | '/vencimientos' | '/causas/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/causas' | '/vencimientos' | '/causas/$id'
-  id: '__root__' | '/' | '/causas' | '/vencimientos' | '/causas/$id'
+  to: '/' | '/causas' | '/equipo' | '/vencimientos' | '/causas/$id'
+  id: '__root__' | '/' | '/causas' | '/equipo' | '/vencimientos' | '/causas/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CausasRoute: typeof CausasRouteWithChildren
+  EquipoRoute: typeof EquipoRoute
   VencimientosRoute: typeof VencimientosRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       path: '/vencimientos'
       fullPath: '/vencimientos'
       preLoaderRoute: typeof VencimientosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equipo': {
+      id: '/equipo'
+      path: '/equipo'
+      fullPath: '/equipo'
+      preLoaderRoute: typeof EquipoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/causas': {
@@ -115,6 +132,7 @@ const CausasRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CausasRoute: CausasRouteWithChildren,
+  EquipoRoute: EquipoRoute,
   VencimientosRoute: VencimientosRoute,
 }
 export const routeTree = rootRouteImport
