@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VencimientosRouteImport } from './routes/vencimientos'
 import { Route as CausasRouteImport } from './routes/causas'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CausasIdRouteImport } from './routes/causas.$id'
 
+const VencimientosRoute = VencimientosRouteImport.update({
+  id: '/vencimientos',
+  path: '/vencimientos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CausasRoute = CausasRouteImport.update({
   id: '/causas',
   path: '/causas',
@@ -32,34 +38,45 @@ const CausasIdRoute = CausasIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/causas': typeof CausasRouteWithChildren
+  '/vencimientos': typeof VencimientosRoute
   '/causas/$id': typeof CausasIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/causas': typeof CausasRouteWithChildren
+  '/vencimientos': typeof VencimientosRoute
   '/causas/$id': typeof CausasIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/causas': typeof CausasRouteWithChildren
+  '/vencimientos': typeof VencimientosRoute
   '/causas/$id': typeof CausasIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/causas' | '/causas/$id'
+  fullPaths: '/' | '/causas' | '/vencimientos' | '/causas/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/causas' | '/causas/$id'
-  id: '__root__' | '/' | '/causas' | '/causas/$id'
+  to: '/' | '/causas' | '/vencimientos' | '/causas/$id'
+  id: '__root__' | '/' | '/causas' | '/vencimientos' | '/causas/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CausasRoute: typeof CausasRouteWithChildren
+  VencimientosRoute: typeof VencimientosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/vencimientos': {
+      id: '/vencimientos'
+      path: '/vencimientos'
+      fullPath: '/vencimientos'
+      preLoaderRoute: typeof VencimientosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/causas': {
       id: '/causas'
       path: '/causas'
@@ -98,6 +115,7 @@ const CausasRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CausasRoute: CausasRouteWithChildren,
+  VencimientosRoute: VencimientosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
