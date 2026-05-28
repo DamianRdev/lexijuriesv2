@@ -15,10 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-0 h-full">
             <AppSidebar onNavigate={() => setOpen(false)} />
           </div>

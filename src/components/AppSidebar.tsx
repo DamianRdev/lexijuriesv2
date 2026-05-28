@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -7,12 +7,18 @@ import {
   Settings,
   LogOut,
   Scale,
+  Contact,
+  ListTodo,
 } from "lucide-react";
+import { auth } from "@/lib/auth";
+import { toast } from "sonner";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/causas", label: "Causas", icon: FolderOpen },
   { to: "/vencimientos", label: "Vencimientos", icon: Calendar },
+  { to: "/clientes", label: "Clientes", icon: Contact },
+  { to: "/tareas", label: "Tareas Internas", icon: ListTodo },
   { to: "/equipo", label: "Equipo", icon: Users },
   { to: "/configuracion", label: "Configuración", icon: Settings },
 ];
@@ -23,6 +29,14 @@ interface Props {
 
 export function AppSidebar({ onNavigate }: Props) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const user = auth.getUser() || { nombre: "Dra. Laura Méndez", role: "Socio", iniciales: "LM" };
+
+  const handleLogoutClick = () => {
+    auth.logout();
+    toast.success("Sesión cerrada con éxito.");
+    navigate({ to: "/login", replace: true });
+  };
 
   return (
     <aside className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
@@ -57,14 +71,20 @@ export function AppSidebar({ onNavigate }: Props) {
 
       <div className="border-t border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-white">
-            LM
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-white uppercase">
+            {user.iniciales}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Dra. Laura Méndez</p>
-            <p className="text-xs text-sidebar-foreground/70 truncate">Socia</p>
+            <p className="text-sm font-medium text-white truncate">{user.nombre}</p>
+            <p className="text-xs text-sidebar-foreground/70 truncate">
+              {user.role === "Socio" ? "Socia" : "Asociado"}
+            </p>
           </div>
-          <button className="text-sidebar-foreground/70 hover:text-white" aria-label="Salir">
+          <button
+            onClick={handleLogoutClick}
+            className="text-sidebar-foreground/70 hover:text-white cursor-pointer"
+            aria-label="Salir"
+          >
             <LogOut className="h-4 w-4" />
           </button>
         </div>

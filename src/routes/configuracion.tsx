@@ -15,6 +15,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import { ToggleRow } from "@/components/ToggleRow";
 
 export const Route = createFileRoute("/configuracion")({
   component: ConfiguracionPage,
@@ -39,12 +40,8 @@ function ConfiguracionPage() {
 
   return (
     <div className="px-6 py-8 md:px-10 max-w-[1400px] mx-auto">
-      <h1 className="font-serif text-4xl text-foreground tracking-tight mb-1">
-        Configuración
-      </h1>
-      <p className="text-sm text-muted-foreground mb-8">
-        Preferencias generales del estudio
-      </p>
+      <h1 className="font-serif text-4xl text-foreground tracking-tight mb-1">Configuración</h1>
+      <p className="text-sm text-muted-foreground mb-8">Preferencias generales del estudio</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna principal */}
@@ -282,48 +279,7 @@ function ThemeButton({
   );
 }
 
-function ToggleRow({
-  icon,
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  description?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 py-1">
-      <div className="flex items-start gap-3">
-        {icon && <span className="mt-0.5">{icon}</span>}
-        <div>
-          <p className="text-sm font-medium text-foreground">{label}</p>
-          {description && (
-            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-          )}
-        </div>
-      </div>
-      <button
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-          checked ? "bg-primary" : "bg-muted-foreground/30"
-        }`}
-        role="switch"
-        aria-checked={checked}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ${
-            checked ? "translate-x-4" : "translate-x-0.5"
-          }`}
-          style={{ marginTop: 2 }}
-        />
-      </button>
-    </div>
-  );
-}
+// ToggleRow has been moved to src/components/ToggleRow.tsx
 
 function DataRow({
   label,
@@ -348,22 +304,14 @@ function DataRow({
   );
 }
 
-function IntegrationRow({
-  name,
-  status,
-}: {
-  name: string;
-  status: "connected" | "disconnected";
-}) {
+function IntegrationRow({ name, status }: { name: string; status: "connected" | "disconnected" }) {
   const isConnected = status === "connected";
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-foreground">{name}</span>
       <span
         className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-          isConnected
-            ? "bg-success/10 text-success"
-            : "bg-muted text-muted-foreground"
+          isConnected ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
         }`}
       >
         <span

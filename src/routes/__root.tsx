@@ -9,7 +9,8 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
-import { AppShell } from "@/components/AppShell";
+import { ClientAuthGuard } from "@/components/ClientAuthGuard";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -77,6 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Sistema de gestión de causas para estudios jurídicos." },
     ],
     links: [
+      { rel: "icon", type: "image/svg+xml", href: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚖️</text></svg>" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
@@ -111,9 +113,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell>
+      <ClientAuthGuard>
         <Outlet />
-      </AppShell>
+      </ClientAuthGuard>
+      <Toaster position="top-right" closeButton richColors />
     </QueryClientProvider>
   );
 }
