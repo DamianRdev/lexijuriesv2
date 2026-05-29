@@ -15,6 +15,7 @@ import {
   materiaColor,
   formatFechaCorta,
   type EstadoVencimiento,
+  type Materia,
 } from "@/lib/mockData";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
@@ -176,7 +177,7 @@ function CausaDetalle() {
         <div className="flex items-center gap-3 mb-1">
           <span className="font-mono text-xs text-muted-foreground">Exp. {causa.expediente}</span>
           <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${materiaColor[causa.materia]}`}
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${materiaColor[causa.materia as Materia]}`}
           >
             {causa.materia}
           </span>
@@ -247,7 +248,7 @@ function CausaDetalle() {
             Últimos movimientos
           </h2>
           <ol className="relative border-l border-border ml-2 space-y-5">
-            {causa.movimientos.map((m, i) => (
+            {causa.movimientos.map((m: any, i: number) => (
               <li key={i} className="pl-5 relative">
                 <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-card" />
                 <div className="flex items-baseline justify-between gap-3">
@@ -286,7 +287,7 @@ function CausaDetalle() {
               <EmptyState icon={Inbox} description="No hay documentos cargados en esta causa." />
             ) : (
               <ul className="divide-y divide-border">
-                {causa.documentos.map((d) => (
+                {causa.documentos.map((d: any) => (
                   <li key={d.id} className="flex items-center gap-3 py-3">
                     <div className="rounded-md bg-muted p-2 text-muted-foreground">
                       <FileText className="h-4 w-4" />
@@ -441,7 +442,7 @@ function CausaDetalle() {
                 <EmptyState icon={StickyNote} description="Aún no hay notas en esta causa." />
               ) : (
                 <ul className="space-y-3">
-                  {notas.map((n) => (
+                  {notas.map((n: any) => (
                     <li key={n.id} className="rounded-md border border-border p-3.5 bg-muted/10">
                       <div className="flex items-center justify-between mb-1.5 border-b border-border/50 pb-1">
                         <p className="text-xs font-semibold text-foreground">{n.autor}</p>

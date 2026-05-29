@@ -19,8 +19,8 @@ export function useAddCausa() {
   return useMutation({
     mutationFn: async (nuevaCausa: Causa) => {
       await delay(100);
-      const causas = db.getCausas();
-      db.setCausas([...causas, nuevaCausa]);
+      const causas = await db.getCausas();
+      await db.setCausas([...causas, nuevaCausa]);
       return nuevaCausa;
     },
     onSuccess: () => {
@@ -34,9 +34,9 @@ export function useUpdateCausa() {
   return useMutation({
     mutationFn: async (causaActualizada: Causa) => {
       await delay(100);
-      const causas = db.getCausas();
+      const causas = await db.getCausas();
       const updated = causas.map((c) => (c.id === causaActualizada.id ? causaActualizada : c));
-      db.setCausas(updated);
+      await db.setCausas(updated);
       return causaActualizada;
     },
     onSuccess: (_, variables) => {
@@ -61,8 +61,8 @@ export function useAddCliente() {
   return useMutation({
     mutationFn: async (nuevoCliente: Cliente) => {
       await delay(100);
-      const clientes = db.getClientes();
-      db.setClientes([...clientes, nuevoCliente]);
+      const clientes = await db.getClientes();
+      await db.setClientes([...clientes, nuevoCliente]);
       return nuevoCliente;
     },
     onSuccess: () => {
@@ -86,8 +86,8 @@ export function useAddTarea() {
   return useMutation({
     mutationFn: async (nuevaTarea: Tarea) => {
       await delay(100);
-      const tareas = db.getTareas();
-      db.setTareas([...tareas, nuevaTarea]);
+      const tareas = await db.getTareas();
+      await db.setTareas([...tareas, nuevaTarea]);
       return nuevaTarea;
     },
     onSuccess: () => {
@@ -102,9 +102,9 @@ export function useUpdateTarea() {
   return useMutation({
     mutationFn: async (tareaActualizada: Tarea) => {
       await delay(100);
-      const tareas = db.getTareas();
+      const tareas = await db.getTareas();
       const updated = tareas.map((t) => (t.id === tareaActualizada.id ? tareaActualizada : t));
-      db.setTareas(updated);
+      await db.setTareas(updated);
       return tareaActualizada;
     },
     onSuccess: () => {
@@ -128,8 +128,9 @@ export function useCausa(id: string) {
     queryKey: ["causa", id],
     queryFn: async () => {
       await delay(100);
-      const causas = db.getCausas();
+      const causas = await db.getCausas();
       return causas.find((c) => c.id === id) || null;
     },
   });
 }
+

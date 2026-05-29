@@ -123,7 +123,7 @@ export const db = {
       notas: c.notas,
     }));
 
-    const { error } = await supabase.from("causas").upsert(rows);
+    const { error } = await (supabase as any).from("causas").upsert(rows as any);
     if (error) console.error("Error saving causas in Supabase:", error);
   },
 
@@ -159,7 +159,7 @@ export const db = {
       telefono: c.telefono,
       direccion: c.direccion,
     }));
-    const { error } = await supabase.from("clientes").upsert(rows);
+    const { error } = await (supabase as any).from("clientes").upsert(rows as any);
     if (error) console.error("Error saving clientes in Supabase:", error);
   },
 
@@ -195,7 +195,7 @@ export const db = {
       abogado_id: v.abogadoId,
       estado: v.estado,
     }));
-    const { error } = await supabase.from("vencimientos").upsert(rows);
+    const { error } = await (supabase as any).from("vencimientos").upsert(rows as any);
     if (error) console.error("Error saving vencimientos in Supabase:", error);
   },
 
@@ -231,7 +231,7 @@ export const db = {
       completada: t.completada,
       prioridad: t.prioridad,
     }));
-    const { error } = await supabase.from("tareas").upsert(rows);
+    const { error } = await (supabase as any).from("tareas").upsert(rows as any);
     if (error) console.error("Error saving tareas in Supabase:", error);
   },
 
