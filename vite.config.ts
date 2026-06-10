@@ -5,6 +5,8 @@ import tsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(async ({ command }) => {
+  const isVercel = !!process.env.VERCEL;
+
   const plugins = [
     tsConfigPaths({ projects: ["./tsconfig.json"] }),
     tanstackStart({
@@ -15,13 +17,15 @@ export default defineConfig(async ({ command }) => {
           specifiers: ["server-only"],
         },
       },
-      server: { entry: "server" },
+      server: isVercel
+        ? { preset: "vercel" }
+        : { entry: "server" },
     }),
     react(),
     tailwindcss(),
   ];
 
-  if (command === "build" && !process.env.VERCEL) {
+  if (command === "build" && !isVercel) {
     try {
       const { cloudflare } = await import("@cloudflare/vite-plugin");
       plugins.push(
