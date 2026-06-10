@@ -28,6 +28,10 @@ const USERS: Record<string, { pass: string; session: UserSession }> = {
     pass: "carlos",
     session: { email: "carlos@lexpanel.com", nombre: "Dr. Carlos Herrera", role: "Asociado", iniciales: "CH", abogadoId: "ch" },
   },
+  "sofia@lexpanel.com": {
+    pass: "sofia",
+    session: { email: "sofia@lexpanel.com", nombre: "Dra. Sofía Álvarez", role: "Asociado", iniciales: "SA", abogadoId: "sa" },
+  },
 };
 
 export const auth = {

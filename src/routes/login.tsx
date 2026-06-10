@@ -163,9 +163,9 @@ function LoginPage() {
     setCountdown(totp.secondsRemaining());
   };
 
-  const autofill = (role: "Socio" | "Asociado") => {
-    setEmail(role === "Socio" ? "laura@lexpanel.com" : "carlos@lexpanel.com");
-    setPassword(role === "Socio" ? "laura" : "carlos");
+  const autofill = (email: string, password: string) => {
+    setEmail(email);
+    setPassword(password);
     setCredError("");
   };
 
@@ -317,12 +317,13 @@ function LoginPage() {
               <p className="mb-3 text-center text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--color-muted-foreground)" }}>
                 Accesos de prueba
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { role: "Socio" as const, name: "Laura Méndez", icon: ShieldCheck, color: "oklch(0.62 0.22 282)" },
-                  { role: "Asociado" as const, name: "Carlos Herrera", icon: User, color: "oklch(0.65 0.18 240)" },
-                ].map(({ role, name, icon: Icon, color }) => (
-                  <button key={role} onClick={() => autofill(role)}
+                  { email: "laura@lexpanel.com",  pass: "laura",  name: "Laura Méndez",   role: "Socio",    icon: ShieldCheck, color: "oklch(0.62 0.22 282)" },
+                  { email: "carlos@lexpanel.com", pass: "carlos", name: "Carlos Herrera", role: "Asociado", icon: User,        color: "oklch(0.65 0.18 240)" },
+                  { email: "sofia@lexpanel.com",  pass: "sofia",  name: "Sofía Álvarez",  role: "Asociado", icon: User,        color: "oklch(0.65 0.18 165)" },
+                ].map(({ email, pass, name, role, icon: Icon, color }) => (
+                  <button key={email} onClick={() => autofill(email, pass)}
                     className="flex flex-col gap-1 rounded-lg p-2.5 text-left transition-all cursor-pointer"
                     style={{ background: "var(--color-background)", border: "1px solid var(--color-border)" }}
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = "oklch(0.62 0.22 282 / 0.35)"; e.currentTarget.style.background = "var(--color-accent)"; }}
@@ -330,7 +331,7 @@ function LoginPage() {
                   >
                     <div className="flex items-center gap-1.5">
                       <Icon className="h-3 w-3 shrink-0" style={{ color }} />
-                      <span className="text-[12px] font-semibold" style={{ color: "var(--color-foreground)" }}>{name}</span>
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--color-foreground)" }}>{name}</span>
                     </div>
                     <span className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>{role}</span>
                   </button>
