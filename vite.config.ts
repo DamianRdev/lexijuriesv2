@@ -10,6 +10,7 @@ export default defineConfig(async ({ command }) => {
   const plugins = [
     tsConfigPaths({ projects: ["./tsconfig.json"] }),
     tanstackStart({
+      spa: { enabled: true },
       importProtection: {
         behavior: "error",
         client: {
