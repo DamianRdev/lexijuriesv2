@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRouterState, useNavigate } from "@tanstack/react-router";
+import { Scale } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
+import { InactivityWarning } from "@/components/InactivityWarning";
+
+// Rutas que solo puede ver el rol Socio
+const SOCIO_ONLY = ["/equipo", "/configuracion"];
 
 export function ClientAuthGuard({ children }: { children: React.ReactNode }) {
   const routerState = useRouterState();
@@ -19,22 +24,40 @@ export function ClientAuthGuard({ children }: { children: React.ReactNode }) {
     if (!isMounted) return;
     const authenticated = auth.isAuthenticated();
     setHasAuth(authenticated);
+
     if (!authenticated && pathname !== "/login") {
       navigate({ to: "/login", replace: true });
-    } else if (authenticated && pathname === "/login") {
+      return;
+    }
+    if (authenticated && pathname === "/login") {
       navigate({ to: "/", replace: true });
+      return;
+    }
+
+    // RBAC: bloquear rutas Socio-only para Asociados
+    if (authenticated) {
+      const user = auth.getUser();
+      const isSocioOnly = SOCIO_ONLY.some((p) => pathname.startsWith(p));
+      if (isSocioOnly && user?.role !== "Socio") {
+        navigate({ to: "/", replace: true });
+      }
     }
   }, [isMounted, pathname, navigate]);
 
   if (!isMounted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0F172A]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-primary border-primary/20" />
-          <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold font-mono">
-            Cargando LexPanel...
-          </p>
+      <div
+        className="flex min-h-screen items-center justify-center flex-col gap-4"
+        style={{ background: "var(--color-background)" }}
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl"
+          style={{ background: "oklch(0.62 0.22 282 / 0.12)", border: "1px solid oklch(0.62 0.22 282 / 0.25)" }}>
+          <Scale className="h-5 w-5" style={{ color: "var(--color-primary)" }} />
         </div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em]"
+          style={{ color: "var(--color-muted-foreground)" }}>
+          Cargando LexPanel...
+        </p>
       </div>
     );
   }
@@ -43,9 +66,12 @@ export function ClientAuthGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!hasAuth) {
-    return null;
-  }
+  if (!hasAuth) return null;
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <AppShell>
+      <InactivityWarning />
+      {children}
+    </AppShell>
+  );
 }

@@ -17,6 +17,7 @@ import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CausasRouteImport } from './routes/causas'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CausasIndexRouteImport } from './routes/causas.index'
 import { Route as CausasIdRouteImport } from './routes/causas.$id'
 
 const VencimientosRoute = VencimientosRouteImport.update({
@@ -59,6 +60,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CausasIndexRoute = CausasIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CausasRoute,
+} as any)
 const CausasIdRoute = CausasIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -75,10 +81,10 @@ export interface FileRoutesByFullPath {
   '/tareas': typeof TareasRoute
   '/vencimientos': typeof VencimientosRoute
   '/causas/$id': typeof CausasIdRoute
+  '/causas/': typeof CausasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/causas': typeof CausasRouteWithChildren
   '/clientes': typeof ClientesRoute
   '/configuracion': typeof ConfiguracionRoute
   '/equipo': typeof EquipoRoute
@@ -86,6 +92,7 @@ export interface FileRoutesByTo {
   '/tareas': typeof TareasRoute
   '/vencimientos': typeof VencimientosRoute
   '/causas/$id': typeof CausasIdRoute
+  '/causas': typeof CausasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +105,7 @@ export interface FileRoutesById {
   '/tareas': typeof TareasRoute
   '/vencimientos': typeof VencimientosRoute
   '/causas/$id': typeof CausasIdRoute
+  '/causas/': typeof CausasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,10 +119,10 @@ export interface FileRouteTypes {
     | '/tareas'
     | '/vencimientos'
     | '/causas/$id'
+    | '/causas/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/causas'
     | '/clientes'
     | '/configuracion'
     | '/equipo'
@@ -122,6 +130,7 @@ export interface FileRouteTypes {
     | '/tareas'
     | '/vencimientos'
     | '/causas/$id'
+    | '/causas'
   id:
     | '__root__'
     | '/'
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/tareas'
     | '/vencimientos'
     | '/causas/$id'
+    | '/causas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -204,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/causas/': {
+      id: '/causas/'
+      path: '/'
+      fullPath: '/causas/'
+      preLoaderRoute: typeof CausasIndexRouteImport
+      parentRoute: typeof CausasRoute
+    }
     '/causas/$id': {
       id: '/causas/$id'
       path: '/$id'
@@ -216,10 +233,12 @@ declare module '@tanstack/react-router' {
 
 interface CausasRouteChildren {
   CausasIdRoute: typeof CausasIdRoute
+  CausasIndexRoute: typeof CausasIndexRoute
 }
 
 const CausasRouteChildren: CausasRouteChildren = {
   CausasIdRoute: CausasIdRoute,
+  CausasIndexRoute: CausasIndexRoute,
 }
 
 const CausasRouteWithChildren =

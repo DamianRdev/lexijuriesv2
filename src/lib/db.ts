@@ -14,6 +14,23 @@ import {
 
 const isClient = typeof window !== "undefined";
 
+// DATABASE MODE MANAGEMENT (MOCK VS LIVE SUPABASE)
+export function isUsingLocalDb(): boolean {
+  if (!isClient) return true;
+  const val = localStorage.getItem("lexpanel_use_local_db");
+  // Default to true (Local Mock) if not set, so mock data loads by default!
+  if (val === null) {
+    localStorage.setItem("lexpanel_use_local_db", "true");
+    return true;
+  }
+  return val === "true";
+}
+
+export function setUsingLocalDb(val: boolean) {
+  if (!isClient) return;
+  localStorage.setItem("lexpanel_use_local_db", String(val));
+}
+
 // MOCK LOCALSTORAGE DATABASE (FALLBACK)
 function getStorageItem<T>(key: string, defaultValue: T): T {
   if (!isClient) return defaultValue;
@@ -73,7 +90,7 @@ if (isSupabaseConfigured) {
 // REAL SUPABASE DATABASE OR MOCK FALLBACK
 export const db = {
   getCausas: async (): Promise<Causa[]> => {
-    if (!supabase) return mockDb.getCausas();
+    if (isUsingLocalDb() || !supabase) return mockDb.getCausas();
     const { data, error } = await supabase.from("causas").select("*");
     if (error) {
       console.error("Error fetching causas from Supabase:", error);
@@ -100,7 +117,7 @@ export const db = {
   },
 
   setCausas: async (val: Causa[]): Promise<void> => {
-    if (!supabase) {
+    if (isUsingLocalDb() || !supabase) {
       mockDb.setCausas(val);
       return;
     }
@@ -128,7 +145,7 @@ export const db = {
   },
 
   getClientes: async (): Promise<Cliente[]> => {
-    if (!supabase) return mockDb.getClientes();
+    if (isUsingLocalDb() || !supabase) return mockDb.getClientes();
     const { data, error } = await supabase.from("clientes").select("*");
     if (error) {
       console.error("Error fetching clientes from Supabase:", error);
@@ -146,7 +163,7 @@ export const db = {
   },
 
   setClientes: async (val: Cliente[]): Promise<void> => {
-    if (!supabase) {
+    if (isUsingLocalDb() || !supabase) {
       mockDb.setClientes(val);
       return;
     }
@@ -164,7 +181,7 @@ export const db = {
   },
 
   getVencimientos: async (): Promise<Vencimiento[]> => {
-    if (!supabase) return mockDb.getVencimientos();
+    if (isUsingLocalDb() || !supabase) return mockDb.getVencimientos();
     const { data, error } = await supabase.from("vencimientos").select("*");
     if (error) {
       console.error("Error fetching vencimientos from Supabase:", error);
@@ -182,7 +199,7 @@ export const db = {
   },
 
   setVencimientos: async (val: Vencimiento[]): Promise<void> => {
-    if (!supabase) {
+    if (isUsingLocalDb() || !supabase) {
       mockDb.setVencimientos(val);
       return;
     }
@@ -200,7 +217,7 @@ export const db = {
   },
 
   getTareas: async (): Promise<Tarea[]> => {
-    if (!supabase) return mockDb.getTareas();
+    if (isUsingLocalDb() || !supabase) return mockDb.getTareas();
     const { data, error } = await supabase.from("tareas").select("*");
     if (error) {
       console.error("Error fetching tareas from Supabase:", error);
@@ -218,7 +235,7 @@ export const db = {
   },
 
   setTareas: async (val: Tarea[]): Promise<void> => {
-    if (!supabase) {
+    if (isUsingLocalDb() || !supabase) {
       mockDb.setTareas(val);
       return;
     }
@@ -236,7 +253,7 @@ export const db = {
   },
 
   getAbogados: async (): Promise<Abogado[]> => {
-    if (!supabase) return mockDb.getAbogados();
+    if (isUsingLocalDb() || !supabase) return mockDb.getAbogados();
     const { data, error } = await supabase.from("abogados").select("*");
     if (error) {
       console.error("Error fetching abogados from Supabase:", error);
