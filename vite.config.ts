@@ -17,9 +17,7 @@ export default defineConfig(async ({ command }) => {
           specifiers: ["server-only"],
         },
       },
-      server: isVercel
-        ? { preset: "vercel" }
-        : { entry: "server" },
+      server: { entry: "server" },
     }),
     react(),
     tailwindcss(),
