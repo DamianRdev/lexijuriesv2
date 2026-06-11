@@ -391,7 +391,7 @@ function Dashboard() {
                     </Link>
                   </td>
                   <td className="px-5 py-3.5 hidden sm:table-cell">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${materiaColors[c.materia] ?? ""}`}>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${materiaColors[c.materia] ?? "badge-otra"}`}>
                       {c.materia}
                     </span>
                   </td>

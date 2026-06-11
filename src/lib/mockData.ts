@@ -1,4 +1,6 @@
-export type Materia = "Civil" | "Laboral" | "Familia" | "Comercial";
+export const MATERIAS_BASE = ["Civil", "Laboral", "Familia", "Comercial"] as const;
+// Open union: the 4 standard materias keep autocomplete, but custom ones are valid too.
+export type Materia = (typeof MATERIAS_BASE)[number] | (string & {});
 export type EstadoCausa = "Activo" | "Archivado" | "Sentencia";
 export type EstadoVencimiento = "Crítico" | "Próximo" | "Cumplido";
 

@@ -19,7 +19,8 @@ import { prefs } from "@/lib/prefs";
 
 const causasSearchSchema = z.object({
   q: z.string().optional().catch(""),
-  materia: z.enum(["Civil", "Laboral", "Familia", "Comercial", ""]).optional().catch(""),
+  // string (not enum): custom materias must be filterable too
+  materia: z.string().optional().catch(""),
   abogado: z.string().optional().catch(""),
   estado: z.enum(["Activo", "Archivado", "Sentencia", ""]).optional().catch(""),
 });
@@ -35,12 +36,14 @@ export const Route = createFileRoute("/causas/")({
 const MATERIAS: Materia[] = ["Civil", "Laboral", "Familia", "Comercial"];
 const ESTADOS: EstadoCausa[] = ["Activo", "Archivado", "Sentencia"];
 
-const materiaClass: Record<Materia, string> = {
+const materiaClass: Record<string, string> = {
   Civil: "badge-civil",
   Laboral: "badge-laboral",
   Familia: "badge-familia",
   Comercial: "badge-comercial",
 };
+// Custom materias fall back to the neutral badge.
+const getMateriaClass = (m: string) => materiaClass[m] ?? "badge-otra";
 
 const estadoClass: Record<EstadoCausa, string> = {
   Activo: "badge-activo",
@@ -76,6 +79,12 @@ function CausasPage() {
     ? causasData
     : causasData.filter((c) => c.abogadoId === user?.abogadoId);
 
+  // Filter pills: the 4 standard materias + any custom ones present in the data.
+  const materiasDisponibles = [
+    ...MATERIAS,
+    ...[...new Set(visibleCausas.map((c) => c.materia))].filter((m) => !MATERIAS.includes(m)),
+  ];
+
   // Preference: hide archived causas from the default listing unless the user
   // explicitly filters by the "Archivado" estado.
   const showArchived = prefs.get("showArchived");
@@ -97,7 +106,8 @@ function CausasPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [expediente, setExpediente] = useState("");
   const [caratula, setCaratula] = useState("");
-  const [fMateria, setFMateria] = useState<Materia>("Civil");
+  const [fMateria, setFMateria] = useState<string>("Civil");
+  const [materiaCustom, setMateriaCustom] = useState("");
   const [juzgado, setJuzgado] = useState("");
   const [secretaria, setSecretaria] = useState("Secretaría Única");
   const [fAbogadoId, setFAbogadoId] = useState(user?.abogadoId ?? abogados[0]?.id ?? "");
@@ -109,6 +119,7 @@ function CausasPage() {
     setExpediente("");
     setCaratula("");
     setFMateria("Civil");
+    setMateriaCustom("");
     setJuzgado("");
     setSecretaria("Secretaría Única");
     setFAbogadoId(user?.abogadoId ?? abogados[0]?.id ?? "");
@@ -127,12 +138,17 @@ function CausasPage() {
       toast.warning("Seleccioná el cliente de la causa.");
       return;
     }
+    const materiaFinal = fMateria === "__otra__" ? materiaCustom.trim() : fMateria;
+    if (!materiaFinal) {
+      toast.warning("Escribí el nombre de la materia.");
+      return;
+    }
 
     const nuevaCausa: Causa = {
       id: `causa-${Date.now()}`,
       expediente: expediente.trim(),
       caratula: caratula.trim(),
-      materia: fMateria,
+      materia: materiaFinal,
       juzgado: juzgado.trim(),
       secretaria: secretaria.trim(),
       abogadoId: fAbogadoId,
@@ -241,7 +257,7 @@ function CausasPage() {
             >
               Todas
             </button>
-            {MATERIAS.map((m) => (
+            {materiasDisponibles.map((m) => (
               <button
                 key={m}
                 onClick={() => setFilter({ materia: materia === m ? "" : m })}
@@ -376,7 +392,7 @@ function CausasPage() {
                           </div>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${materiaClass[c.materia]}`}>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${getMateriaClass(c.materia)}`}>
                             {c.materia}
                           </span>
                         </td>
@@ -552,13 +568,25 @@ function CausasPage() {
                   </label>
                   <select
                     value={fMateria}
-                    onChange={(e) => setFMateria(e.target.value as Materia)}
+                    onChange={(e) => setFMateria(e.target.value)}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
                   >
                     {MATERIAS.map((m) => (
                       <option key={m} value={m}>{m}</option>
                     ))}
+                    <option value="__otra__">Otra…</option>
                   </select>
+                  {fMateria === "__otra__" && (
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      value={materiaCustom}
+                      onChange={(e) => setMateriaCustom(e.target.value)}
+                      placeholder="Ej. Penal, Tributario, Sucesiones…"
+                      className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">

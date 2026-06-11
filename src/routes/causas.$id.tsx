@@ -189,7 +189,7 @@ function CausaDetalle() {
               style={{ background: "oklch(0.155 0.016 275)", color: "oklch(0.55 0.022 278)" }}>
               Exp. {causa.expediente}
             </span>
-            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${materiaBadge[causa.materia as Materia]}`}>
+            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${materiaBadge[causa.materia as Materia] ?? "badge-otra"}`}>
               {causa.materia}
             </span>
             <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${estadoBadge[causa.estado] ?? "badge-archivado"}`}>
