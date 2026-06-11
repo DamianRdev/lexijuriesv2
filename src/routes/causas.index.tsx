@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, Plus, Eye, Scale, X } from "lucide-react";
+import { Search, Plus, Eye, Scale, X, FolderPlus } from "lucide-react";
 import { z } from "zod";
 import {
   abogados,
@@ -7,11 +8,13 @@ import {
   formatFechaCorta,
   type Materia,
   type EstadoCausa,
+  type Causa,
 } from "@/lib/mockData";
 import { toast } from "sonner";
-import { useCausas, useClientes } from "@/hooks/useDb";
+import { useCausas, useClientes, useAddCausa } from "@/hooks/useDb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import { prefs } from "@/lib/prefs";
 
 const causasSearchSchema = z.object({
@@ -87,11 +90,75 @@ function CausasPage() {
     return true;
   });
 
-  const handleNuevaCausa = () => {
-    toast.info("Apertura de formulario próximamente disponible.");
+  const today = new Date().toISOString().split("T")[0];
+
+  // ── Modal "Registrar Causa" ──
+  const addCausaMutation = useAddCausa();
+  const [isOpen, setIsOpen] = useState(false);
+  const [expediente, setExpediente] = useState("");
+  const [caratula, setCaratula] = useState("");
+  const [fMateria, setFMateria] = useState<Materia>("Civil");
+  const [juzgado, setJuzgado] = useState("");
+  const [secretaria, setSecretaria] = useState("Secretaría Única");
+  const [fAbogadoId, setFAbogadoId] = useState(user?.abogadoId ?? abogados[0]?.id ?? "");
+  const [fClienteId, setFClienteId] = useState("");
+  const [clienteRol, setClienteRol] = useState<"Actor" | "Demandado">("Actor");
+  const [fechaInicio, setFechaInicio] = useState(today);
+
+  const resetForm = () => {
+    setExpediente("");
+    setCaratula("");
+    setFMateria("Civil");
+    setJuzgado("");
+    setSecretaria("Secretaría Única");
+    setFAbogadoId(user?.abogadoId ?? abogados[0]?.id ?? "");
+    setFClienteId("");
+    setClienteRol("Actor");
+    setFechaInicio(today);
   };
 
-  const today = new Date().toISOString().split("T")[0];
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expediente.trim() || !caratula.trim()) {
+      toast.warning("El expediente y la carátula son obligatorios.");
+      return;
+    }
+    if (!fClienteId) {
+      toast.warning("Seleccioná el cliente de la causa.");
+      return;
+    }
+
+    const nuevaCausa: Causa = {
+      id: `causa-${Date.now()}`,
+      expediente: expediente.trim(),
+      caratula: caratula.trim(),
+      materia: fMateria,
+      juzgado: juzgado.trim(),
+      secretaria: secretaria.trim(),
+      abogadoId: fAbogadoId,
+      clienteId: fClienteId,
+      clienteRol,
+      fechaInicio,
+      estado: "Activo",
+      ultimoMovimiento: "Apertura del expediente",
+      ultimoMovimientoFecha: today,
+      movimientos: [{ fecha: today, tipo: "Inicio", descripcion: "Apertura del expediente." }],
+      documentos: [],
+      notas: [],
+    };
+
+    addCausaMutation.mutate(nuevaCausa, {
+      onSuccess: () => {
+        if (user) audit.log("create_causa", user.email, user.role, `exp:${nuevaCausa.expediente}`);
+        toast.success("Causa registrada con éxito.", { description: nuevaCausa.expediente });
+        setIsOpen(false);
+        resetForm();
+      },
+      onError: () => {
+        toast.error("Error al registrar la causa.");
+      },
+    });
+  };
 
   return (
     <div className="px-4 py-5 sm:px-6 sm:py-7 md:px-8 md:py-8 lg:px-10 max-w-[1400px] mx-auto space-y-5 sm:space-y-6">
@@ -112,7 +179,7 @@ function CausasPage() {
         </div>
         {isSocio && (
           <button
-            onClick={handleNuevaCausa}
+            onClick={() => setIsOpen(true)}
             className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-all active:scale-95 cursor-pointer shrink-0"
             style={{
               background: "var(--color-primary)",
@@ -387,6 +454,175 @@ function CausasPage() {
           </table>
         </div>
       </div>
+
+      {/* ── Modal Registrar Causa ───────────── */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overlay-fade">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/10">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <FolderPlus className="h-4.5 w-4.5 text-primary" /> Registrar Nueva Causa
+              </h3>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-muted-foreground hover:text-foreground rounded-lg p-1.5 hover:bg-muted transition-colors cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    N° de Expediente
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={expediente}
+                    onChange={(e) => setExpediente(e.target.value)}
+                    placeholder="Ej. 12.345/2026"
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Fecha de Inicio
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaInicio}
+                    onChange={(e) => setFechaInicio(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                  Carátula
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={caratula}
+                  onChange={(e) => setCaratula(e.target.value)}
+                  placeholder="Ej. Pérez, Juan c/ Empresa S.A. s/ despido"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Cliente
+                  </label>
+                  <select
+                    required
+                    value={fClienteId}
+                    onChange={(e) => setFClienteId(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  >
+                    <option value="">Seleccionar cliente…</option>
+                    {clientesData.map((c) => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Rol del Cliente
+                  </label>
+                  <select
+                    value={clienteRol}
+                    onChange={(e) => setClienteRol(e.target.value as "Actor" | "Demandado")}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  >
+                    <option value="Actor">Actor</option>
+                    <option value="Demandado">Demandado</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Materia
+                  </label>
+                  <select
+                    value={fMateria}
+                    onChange={(e) => setFMateria(e.target.value as Materia)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  >
+                    {MATERIAS.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Abogado Responsable
+                  </label>
+                  <select
+                    value={fAbogadoId}
+                    onChange={(e) => setFAbogadoId(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  >
+                    {abogados.map((a) => (
+                      <option key={a.id} value={a.id}>{a.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Juzgado
+                  </label>
+                  <input
+                    type="text"
+                    value={juzgado}
+                    onChange={(e) => setJuzgado(e.target.value)}
+                    placeholder="Ej. Juzgado Civil N° 24"
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Secretaría
+                  </label>
+                  <input
+                    type="text"
+                    value={secretaria}
+                    onChange={(e) => setSecretaria(e.target.value)}
+                    placeholder="Ej. Secretaría Única"
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-all active:scale-95 cursor-pointer touch-target"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={addCausaMutation.isPending}
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95 cursor-pointer disabled:opacity-50 touch-target"
+                >
+                  {addCausaMutation.isPending ? "Registrando..." : "Guardar Causa"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
