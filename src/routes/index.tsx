@@ -8,14 +8,12 @@ import {
   ArrowRight,
   Plus,
   Calendar,
-  RotateCw,
   FileText,
   User,
   Scale,
   TrendingUp,
 } from "lucide-react";
 import { getAbogado, formatFechaLarga, abogados } from "@/lib/mockData";
-import { toast } from "sonner";
 import { useCausas, useVencimientos } from "@/hooks/useDb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/lib/auth";
@@ -67,15 +65,6 @@ function Dashboard() {
     },
   ];
 
-  const handleSync = () => {
-    const promise = () => new Promise((res) => setTimeout(() => res({}), 1800));
-    toast.promise(promise, {
-      loading: "Conectando con PJN y SCBA MEV...",
-      success: "Sincronización exitosa. Causas actualizadas.",
-      error: "Error al sincronizar con el portal judicial.",
-    });
-  };
-
   const vencimientosProximos = [...vencimientosActivos]
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
     .slice(0, 4);
@@ -118,26 +107,6 @@ function Dashboard() {
             </span>
           </h1>
         </div>
-        <button
-          onClick={handleSync}
-          className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-all active:scale-95 cursor-pointer shrink-0"
-          style={{
-            background: "var(--color-accent)",
-            border: "1px solid var(--color-border)",
-            color: "var(--color-foreground)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-primary)";
-            e.currentTarget.style.color = "var(--color-primary)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-border)";
-            e.currentTarget.style.color = "var(--color-foreground)";
-          }}
-        >
-          <RotateCw className="h-3.5 w-3.5" />
-          Sincronizar Juzgados
-        </button>
       </div>
 
       {/* ── Critical alert ─────────────────── */}

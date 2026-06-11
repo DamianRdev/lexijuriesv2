@@ -575,7 +575,7 @@ export const tareas: Tarea[] = [
   },
   {
     id: "t4",
-    descripcion: "Revisar pericia contable cargada en PJN",
+    descripcion: "Revisar pericia contable del expediente",
     causaId: "6",
     abogadoId: "ch",
     fechaLimite: "2026-05-28",

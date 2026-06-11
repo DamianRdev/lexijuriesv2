@@ -268,7 +268,7 @@ function ConfiguracionPage() {
 
       <div className="mt-10 flex items-center gap-3 text-xs text-muted-foreground">
         <SettingsIcon className="h-3.5 w-3.5" />
-        LexPanel v1.0 · Última sincronización 26/05/2026 14:32
+        LexPanel v1.0
       </div>
     </div>
   );
