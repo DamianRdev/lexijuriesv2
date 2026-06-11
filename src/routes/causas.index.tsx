@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useCausas, useClientes } from "@/hooks/useDb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/lib/auth";
+import { prefs } from "@/lib/prefs";
 
 const causasSearchSchema = z.object({
   q: z.string().optional().catch(""),
@@ -72,7 +73,12 @@ function CausasPage() {
     ? causasData
     : causasData.filter((c) => c.abogadoId === user?.abogadoId);
 
+  // Preference: hide archived causas from the default listing unless the user
+  // explicitly filters by the "Archivado" estado.
+  const showArchived = prefs.get("showArchived");
+
   const filtered = visibleCausas.filter((c) => {
+    if (!showArchived && estado !== "Archivado" && c.estado === "Archivado") return false;
     if (q && !c.caratula.toLowerCase().includes(q.toLowerCase()) && !c.expediente.includes(q))
       return false;
     if (materia && c.materia !== materia) return false;

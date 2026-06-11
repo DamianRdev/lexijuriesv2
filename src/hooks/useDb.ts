@@ -1,12 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { db } from "@/lib/db";
+import { prefs } from "@/lib/prefs";
 import { type Causa, type Cliente, type Tarea, type Vencimiento } from "@/lib/mockData";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const AUTO_REFRESH_MS = 60_000;
+
+// Reactive read of the "autoRefresh" preference → refetchInterval for queries.
+function useAutoRefreshInterval(): number | false {
+  const [on, setOn] = useState(() => prefs.get("autoRefresh"));
+  useEffect(() => prefs.subscribe((p) => setOn(p.autoRefresh)), []);
+  return on ? AUTO_REFRESH_MS : false;
+}
+
 export function useCausas() {
   return useQuery({
     queryKey: ["causas"],
+    refetchInterval: useAutoRefreshInterval(),
     queryFn: async () => {
       await delay(150);
       return db.getCausas();
@@ -49,6 +61,7 @@ export function useUpdateCausa() {
 export function useClientes() {
   return useQuery({
     queryKey: ["clientes"],
+    refetchInterval: useAutoRefreshInterval(),
     queryFn: async () => {
       await delay(150);
       return db.getClientes();
@@ -74,6 +87,7 @@ export function useAddCliente() {
 export function useTareas() {
   return useQuery({
     queryKey: ["tareas"],
+    refetchInterval: useAutoRefreshInterval(),
     queryFn: async () => {
       await delay(100);
       return db.getTareas();
@@ -116,6 +130,7 @@ export function useUpdateTarea() {
 export function useVencimientos() {
   return useQuery({
     queryKey: ["vencimientos"],
+    refetchInterval: useAutoRefreshInterval(),
     queryFn: async () => {
       await delay(150);
       return db.getVencimientos();
@@ -126,6 +141,7 @@ export function useVencimientos() {
 export function useCausa(id: string) {
   return useQuery({
     queryKey: ["causa", id],
+    refetchInterval: useAutoRefreshInterval(),
     queryFn: async () => {
       await delay(100);
       const causas = await db.getCausas();

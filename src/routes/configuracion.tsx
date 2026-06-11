@@ -9,12 +9,9 @@ import {
   Bell,
   Mail,
   Smartphone,
-  LayoutList,
-  Rows3,
   Eye,
   Shield,
   Check,
-  ChevronRight,
   Database,
   ScrollText,
   LogIn,
@@ -29,6 +26,7 @@ import { ToggleRow } from "@/components/ToggleRow";
 import { isUsingLocalDb, setUsingLocalDb } from "@/lib/db";
 import { audit, type AuditEntry } from "@/lib/audit";
 import { auth } from "@/lib/auth";
+import { prefs, type ThemeMode } from "@/lib/prefs";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/configuracion")({
@@ -36,25 +34,39 @@ export const Route = createFileRoute("/configuracion")({
   head: () => ({ meta: [{ title: "Configuración — LexPanel" }] }),
 });
 
-type ThemeMode = "light" | "dark" | "system";
-type TableDensity = "compact" | "normal";
-
 function ConfiguracionPage() {
-  const [theme, setTheme] = useState<ThemeMode>("light");
-  const [tableDensity, setTableDensity] = useState<TableDensity>("normal");
+  const initial = prefs.getAll();
 
-  const [emailNotif, setEmailNotif] = useState(true);
-  const [pushNotif, setPushNotif] = useState(true);
-  const [vencimientoAlert, setVencimientoAlert] = useState(true);
-  const [movimientoAlert, setMovimientoAlert] = useState(false);
-  const [resumenSemanal, setResumenSemanal] = useState(true);
+  const [theme, setTheme] = useState<ThemeMode>(initial.theme);
 
-  const [showArchived, setShowArchived] = useState(true);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [emailNotif, setEmailNotif] = useState(initial.emailNotif);
+  const [pushNotif, setPushNotif] = useState(initial.pushNotif);
+  const [vencimientoAlert, setVencimientoAlert] = useState(initial.vencimientoAlert);
+  const [movimientoAlert, setMovimientoAlert] = useState(initial.movimientoAlert);
+  const [resumenSemanal, setResumenSemanal] = useState(initial.resumenSemanal);
+
+  const [showArchived, setShowArchived] = useState(initial.showArchived);
+  const [autoRefresh, setAutoRefresh] = useState(initial.autoRefresh);
 
   const [localDb, setLocalDb] = useState(isUsingLocalDb());
   const [auditLog, setAuditLog] = useState<AuditEntry[]>(() => audit.getAll());
   const isSocio = auth.getUser()?.role === "Socio";
+
+  const handleTheme = (mode: ThemeMode) => {
+    setTheme(mode);
+    prefs.set("theme", mode); // also applies the theme live
+    toast.success(
+      mode === "light" ? "Tema claro activado." : mode === "dark" ? "Tema oscuro activado." : "Tema según el sistema.",
+    );
+  };
+
+  // Generic binder: update local state + persist to prefs.
+  const bind =
+    <T,>(key: Parameters<typeof prefs.set>[0], setter: (v: T) => void) =>
+    (value: T) => {
+      setter(value);
+      prefs.set(key, value as never);
+    };
 
   const handleDbToggle = (checked: boolean) => {
     setUsingLocalDb(checked);
@@ -91,54 +103,33 @@ function ConfiguracionPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Apariencia */}
           <Card title="Apariencia" icon={<Monitor className="h-4 w-4" />}>
-            <div className="space-y-5">
-              {/* Tema */}
-              <div>
-                <label className="text-xs font-medium text-foreground mb-2 block">
-                  Tema de la interfaz
-                </label>
-                <div className="flex gap-2">
-                  <ThemeButton
-                    active={theme === "light"}
-                    onClick={() => setTheme("light")}
-                    icon={<Sun className="h-4 w-4" />}
-                    label="Claro"
-                  />
-                  <ThemeButton
-                    active={theme === "dark"}
-                    onClick={() => setTheme("dark")}
-                    icon={<Moon className="h-4 w-4" />}
-                    label="Oscuro"
-                  />
-                  <ThemeButton
-                    active={theme === "system"}
-                    onClick={() => setTheme("system")}
-                    icon={<Monitor className="h-4 w-4" />}
-                    label="Sistema"
-                  />
-                </div>
+            <div>
+              <label className="text-xs font-medium text-foreground mb-2 block">
+                Tema de la interfaz
+              </label>
+              <div className="flex gap-2">
+                <ThemeButton
+                  active={theme === "light"}
+                  onClick={() => handleTheme("light")}
+                  icon={<Sun className="h-4 w-4" />}
+                  label="Claro"
+                />
+                <ThemeButton
+                  active={theme === "dark"}
+                  onClick={() => handleTheme("dark")}
+                  icon={<Moon className="h-4 w-4" />}
+                  label="Oscuro"
+                />
+                <ThemeButton
+                  active={theme === "system"}
+                  onClick={() => handleTheme("system")}
+                  icon={<Monitor className="h-4 w-4" />}
+                  label="Sistema"
+                />
               </div>
-
-              {/* Densidad tablas */}
-              <div>
-                <label className="text-xs font-medium text-foreground mb-2 block">
-                  Densidad de tablas
-                </label>
-                <div className="flex gap-2">
-                  <ThemeButton
-                    active={tableDensity === "normal"}
-                    onClick={() => setTableDensity("normal")}
-                    icon={<LayoutList className="h-4 w-4" />}
-                    label="Normal"
-                  />
-                  <ThemeButton
-                    active={tableDensity === "compact"}
-                    onClick={() => setTableDensity("compact")}
-                    icon={<Rows3 className="h-4 w-4" />}
-                    label="Compacta"
-                  />
-                </div>
-              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                El tema se guarda y se aplica en todo el sistema.
+              </p>
             </div>
           </Card>
 
@@ -150,14 +141,14 @@ function ConfiguracionPage() {
                 label="Notificaciones por email"
                 description="Recibir alertas en la casilla de correo"
                 checked={emailNotif}
-                onChange={setEmailNotif}
+                onChange={bind<boolean>("emailNotif", setEmailNotif)}
               />
               <ToggleRow
                 icon={<Smartphone className="h-4 w-4 text-muted-foreground" />}
                 label="Notificaciones push"
                 description="Alertas en el navegador en tiempo real"
                 checked={pushNotif}
-                onChange={setPushNotif}
+                onChange={bind<boolean>("pushNotif", setPushNotif)}
               />
               <div className="border-t border-border my-3" />
               <ToggleRow
@@ -165,21 +156,21 @@ function ConfiguracionPage() {
                 label="Alertas de vencimientos críticos"
                 description="Notificar 48 hs antes de fechas límite"
                 checked={vencimientoAlert}
-                onChange={setVencimientoAlert}
+                onChange={bind<boolean>("vencimientoAlert", setVencimientoAlert)}
               />
               <ToggleRow
                 icon={<Eye className="h-4 w-4 text-primary" />}
                 label="Nuevos movimientos en causas"
                 description="Avisar cuando haya actualizaciones judiciales"
                 checked={movimientoAlert}
-                onChange={setMovimientoAlert}
+                onChange={bind<boolean>("movimientoAlert", setMovimientoAlert)}
               />
               <ToggleRow
                 icon={<Mail className="h-4 w-4 text-muted-foreground" />}
                 label="Resumen semanal"
                 description="Reporte de actividad todos los lunes"
                 checked={resumenSemanal}
-                onChange={setResumenSemanal}
+                onChange={bind<boolean>("resumenSemanal", setResumenSemanal)}
               />
             </div>
           </Card>
@@ -213,15 +204,15 @@ function ConfiguracionPage() {
             <div className="space-y-3">
               <ToggleRow
                 label="Mostrar causas archivadas"
-                description="Incluir expedientes finalizados en listados"
+                description="Incluir expedientes finalizados en los listados de causas"
                 checked={showArchived}
-                onChange={setShowArchived}
+                onChange={bind<boolean>("showArchived", setShowArchived)}
               />
               <ToggleRow
                 label="Actualización automática"
-                description="Refrescar datos cada 5 minutos"
+                description="Refrescar datos de la nube cada 60 segundos"
                 checked={autoRefresh}
-                onChange={setAutoRefresh}
+                onChange={bind<boolean>("autoRefresh", setAutoRefresh)}
               />
             </div>
           </Card>
@@ -263,50 +254,10 @@ function ConfiguracionPage() {
               <DataRow label="Domicilio" value="Av. Corrientes 1234, Piso 8°, CABA" />
               <DataRow label="Matrícula" value="CPACF T° 123 F° 456" />
             </dl>
-            <button className="mt-4 w-full text-xs font-medium text-primary hover:text-primary/80 flex items-center justify-center gap-1 py-2 rounded-md border border-primary/20 hover:bg-primary/5 transition-colors">
-              Editar datos del estudio
-              <ChevronRight className="h-3 w-3" />
-            </button>
-          </Card>
-
-          {/* Integraciones */}
-          <Card title="Integraciones">
-            <div className="space-y-2.5">
-              <IntegrationRow name="Portal PJN" status="connected" />
-              <IntegrationRow name="MEV SCBA" status="connected" />
-              <IntegrationRow name="AFIP" status="disconnected" />
-              <IntegrationRow name="Google Calendar" status="connected" />
-            </div>
-          </Card>
-
-          {/* Plan */}
-          <Card title="Suscripción">
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Plan</span>
-                <span className="font-medium text-foreground">Estudio Profesional</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Usuarios</span>
-                <span className="font-medium text-foreground">3 / 5</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Próximo cobro</span>
-                <span className="font-medium text-foreground">01/06/2026</span>
-              </div>
-              <div className="pt-2">
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: "60%" }} />
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5">
-                  60% del cupo de usuarios utilizado
-                </p>
-              </div>
-            </div>
           </Card>
 
           {/* Seguridad */}
-          <Card title="Seguridad">
+          <Card title="Seguridad" icon={<Shield className="h-4 w-4" />}>
             <dl className="space-y-3 text-sm">
               <DataRow label="Autenticación en 2 pasos" value="Activada" valueColor="success" />
               <DataRow label="Última sesión" value="26/05/2026 09:14" />
@@ -372,8 +323,6 @@ function ThemeButton({
   );
 }
 
-// ToggleRow has been moved to src/components/ToggleRow.tsx
-
 function DataRow({
   label,
   value,
@@ -397,27 +346,6 @@ function DataRow({
   );
 }
 
-function IntegrationRow({ name, status }: { name: string; status: "connected" | "disconnected" }) {
-  const isConnected = status === "connected";
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-foreground">{name}</span>
-      <span
-        className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-          isConnected ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
-        }`}
-      >
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            isConnected ? "bg-success" : "bg-muted-foreground/50"
-          }`}
-        />
-        {isConnected ? "Conectado" : "No conectado"}
-      </span>
-    </div>
-  );
-}
-
 const ACTION_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   login:             { label: "Inicio de sesión",   icon: <LogIn className="h-3 w-3" />,  color: "oklch(0.70 0.17 165)" },
   logout:            { label: "Cierre de sesión",   icon: <LogOut className="h-3 w-3" />, color: "oklch(0.55 0.022 278)" },
@@ -437,7 +365,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
   };
   return (
     <div className="flex items-center gap-2.5 py-1.5 text-[11px]"
-      style={{ borderBottom: "1px solid oklch(0.195 0.022 275 / 0.5)" }}>
+      style={{ borderBottom: "1px solid var(--border)" }}>
       <span className="shrink-0" style={{ color: meta.color }}>{meta.icon}</span>
       <span className="flex-1 text-foreground/80 truncate">{meta.label}</span>
       <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{entry.user.split("@")[0]}</span>

@@ -8,9 +8,15 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 
+import { useEffect } from "react";
+
 import appCss from "../styles.css?url";
 import { ClientAuthGuard } from "@/components/ClientAuthGuard";
 import { Toaster } from "@/components/ui/sonner";
+import { initTheme } from "@/lib/prefs";
+
+// Runs synchronously in <head> before paint so the saved theme never flashes.
+const THEME_BOOT_SCRIPT = `try{var p=JSON.parse(localStorage.getItem('lexpanel_prefs')||'{}');var t=p.theme||'dark';var l=t==='light'||(t==='system'&&window.matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.classList.add('light');}catch(e){}`;
 
 function NotFoundComponent() {
   return (
@@ -100,8 +106,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -114,6 +121,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Re-apply saved theme on mount; sets up the system-preference listener.
+  useEffect(() => {
+    initTheme();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

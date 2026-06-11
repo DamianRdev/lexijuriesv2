@@ -92,6 +92,59 @@
   --sidebar-ring: oklch(0.62 0.22 282);
 }
 
+/* ─── LIGHT THEME (opt-in via .light on <html>) ───── */
+html.light {
+  /* Core backgrounds — warm paper white with faint violet undertone */
+  --background: oklch(0.985 0.003 285);
+  --foreground: oklch(0.24 0.022 280);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.022 280);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.022 280);
+
+  /* Primary — same electric indigo-violet, reads well on white */
+  --primary: oklch(0.55 0.23 282);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.96 0.008 285);
+  --secondary-foreground: oklch(0.34 0.022 280);
+  --muted: oklch(0.965 0.006 285);
+  --muted-foreground: oklch(0.50 0.02 280);
+  --accent: oklch(0.95 0.022 285);
+  --accent-foreground: oklch(0.40 0.10 282);
+
+  /* Status colors — darkened slightly for contrast on light bg */
+  --destructive: oklch(0.55 0.23 22);
+  --destructive-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.68 0.16 65);
+  --warning-foreground: oklch(0.99 0 0);
+  --success: oklch(0.56 0.15 165);
+  --success-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.91 0.008 285);
+  --input: oklch(0.92 0.008 285);
+  --ring: oklch(0.55 0.23 282);
+
+  /* Sidebar — subtle tinted panel against white app bg */
+  --sidebar: oklch(0.975 0.006 285);
+  --sidebar-foreground: oklch(0.42 0.022 280);
+  --sidebar-primary: oklch(0.55 0.23 282);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.945 0.018 285);
+  --sidebar-accent-foreground: oklch(0.30 0.03 282);
+  --sidebar-border: oklch(0.91 0.008 285);
+  --sidebar-ring: oklch(0.55 0.23 282);
+}
+
+/* Light-mode scrollbar — lighter thumb */
+html.light ::-webkit-scrollbar-thumb {
+  background: oklch(0.85 0.01 285);
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.78 0.015 285);
+}
+
 /* ─── BASE ───────────────────────────────────────── */
 @layer base {
   * {
