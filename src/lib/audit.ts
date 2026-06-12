@@ -3,7 +3,7 @@ const MAX_ENTRIES = 200;
 
 export type AuditAction =
   | "login" | "logout" | "session_expired" | "session_refreshed"
-  | "view_causa" | "create_causa" | "update_causa"
+  | "view_causa" | "create_causa" | "update_causa" | "delete_causa"
   | "create_cliente" | "create_tarea" | "update_tarea"
   | "create_nota" | "download_doc"
   | "rbac_denied"

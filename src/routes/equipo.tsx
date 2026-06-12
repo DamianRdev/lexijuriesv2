@@ -62,7 +62,7 @@ function EquipoPage() {
             const vencPend = vencimientosData.filter((v) => v.abogadoId === a.id && v.estado !== "Cumplido").length;
             const vencCrit = vencimientosData.filter((v) => v.abogadoId === a.id && v.estado === "Crítico").length;
             const color = avatarGrad[idx % avatarGrad.length];
-            const role = idx === 0 ? "Socio" : "Asociado";
+            const role = a.role ?? "Asociado";
             const pct = Math.round((activas / maxCausas) * 100);
 
             return (

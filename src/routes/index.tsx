@@ -49,17 +49,16 @@ function Dashboard() {
   const conMovimientoHoyCount = causasData.filter((c) => c.ultimoMovimientoFecha === todayStr).length;
 
   const user = auth.getUser();
-  const isSocio = user?.role === "Socio";
 
   const KPIS = [
-    { label: "Causas Activas", value: activasCount, icon: FolderOpen, hint: "+2 este mes", alert: false, accent: "oklch(0.62 0.22 282)" },
+    { label: "Causas Activas", value: activasCount, icon: FolderOpen, hint: activasCount === 1 ? "1 expediente activo" : `${activasCount} expedientes activos`, alert: false, accent: "oklch(0.62 0.22 282)" },
     { label: "Venc. Críticos", value: criticosCount, icon: AlertTriangle, hint: `${semanaVencimientosCount} esta semana`, alert: criticosCount > 0, accent: "oklch(0.61 0.24 22)" },
     { label: "Novedades Hoy", value: conMovimientoHoyCount, icon: Activity, hint: "Movimientos registrados", alert: false, accent: "oklch(0.70 0.17 165)" },
     {
       label: "Honorarios Pend.",
-      value: isSocio ? "$4.820.000" : "—",
+      value: "—",
       icon: DollarSign,
-      hint: isSocio ? "8 facturas activas" : "Solo Socios",
+      hint: "Módulo en preparación",
       alert: false,
       accent: "oklch(0.76 0.17 65)",
     },

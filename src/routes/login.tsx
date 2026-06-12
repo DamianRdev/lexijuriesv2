@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Scale, Mail, Lock, ShieldAlert, ArrowRight,
-  ShieldCheck, User, Smartphone, ArrowLeft, RefreshCw, AlertTriangle,
+  ShieldCheck, Smartphone, ArrowLeft, RefreshCw, AlertTriangle,
 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { totp } from "@/lib/totp";
@@ -206,11 +206,6 @@ function LoginPage() {
     setCountdown(totp.secondsRemaining());
   };
 
-  const autofill = (email: string, password: string) => {
-    setEmail(email);
-    setPassword(password);
-    setCredError("");
-  };
 
   // Shared bg/card styles
   const inputStyle: React.CSSProperties = {
@@ -356,31 +351,6 @@ function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-6 pt-5" style={{ borderTop: "1px solid var(--color-border)" }}>
-              <p className="mb-3 text-center text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--color-muted-foreground)" }}>
-                Accesos de prueba
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { email: "laura@lexpanel.com",  pass: "laura",  name: "Laura Méndez",   role: "Socio",    icon: ShieldCheck, color: "oklch(0.62 0.22 282)" },
-                  { email: "carlos@lexpanel.com", pass: "carlos", name: "Carlos Herrera", role: "Asociado", icon: User,        color: "oklch(0.65 0.18 240)" },
-                  { email: "sofia@lexpanel.com",  pass: "sofia",  name: "Sofía Álvarez",  role: "Asociado", icon: User,        color: "oklch(0.65 0.18 165)" },
-                ].map(({ email, pass, name, role, icon: Icon, color }) => (
-                  <button key={email} onClick={() => autofill(email, pass)}
-                    className="flex flex-col gap-1 rounded-lg p-2.5 text-left transition-all cursor-pointer"
-                    style={{ background: "var(--color-background)", border: "1px solid var(--color-border)" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "oklch(0.62 0.22 282 / 0.35)"; e.currentTarget.style.background = "var(--color-accent)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.background = "var(--color-background)"; }}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Icon className="h-3 w-3 shrink-0" style={{ color }} />
-                      <span className="text-[11px] font-semibold" style={{ color: "var(--color-foreground)" }}>{name}</span>
-                    </div>
-                    <span className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>{role}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </>
         )}
 

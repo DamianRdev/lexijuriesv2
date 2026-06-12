@@ -249,18 +249,18 @@ function ConfiguracionPage() {
           {/* Datos del estudio */}
           <Card title="Datos del estudio" icon={<SettingsIcon className="h-4 w-4" />}>
             <dl className="space-y-3 text-sm">
-              <DataRow label="Razón social" value="Méndez, Herrera & Álvarez Abogados" />
-              <DataRow label="CUIT" value="30-71234567-8" />
-              <DataRow label="Domicilio" value="Av. Corrientes 1234, Piso 8°, CABA" />
-              <DataRow label="Matrícula" value="CPACF T° 123 F° 456" />
+              <DataRow label="Razón social" value="Tejera & Asociados" />
+              <DataRow label="CUIT" value="—" />
+              <DataRow label="Domicilio" value="—" />
+              <DataRow label="Matrícula" value="—" />
             </dl>
           </Card>
 
           {/* Seguridad */}
           <Card title="Seguridad" icon={<Shield className="h-4 w-4" />}>
             <dl className="space-y-3 text-sm">
-              <DataRow label="Autenticación en 2 pasos" value="Activada" valueColor="success" />
-              <DataRow label="Última sesión" value="26/05/2026 09:14" />
+              <DataRow label="Usuario" value={auth.getUser()?.email ?? "—"} />
+              <DataRow label="Rol" value={auth.getUser()?.role ?? "—"} />
             </dl>
           </Card>
         </div>
