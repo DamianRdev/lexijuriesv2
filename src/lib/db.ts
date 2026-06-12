@@ -87,6 +87,9 @@ if (isSupabaseConfigured) {
   }
 }
 
+// Exported for Supabase Auth (see supabaseAuth.ts). Null when not configured.
+export { supabase };
+
 // REAL SUPABASE DATABASE OR MOCK FALLBACK
 export const db = {
   getCausas: async (): Promise<Causa[]> => {

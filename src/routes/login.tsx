@@ -8,6 +8,10 @@ import { auth } from "@/lib/auth";
 import { totp } from "@/lib/totp";
 import { rateLimit } from "@/lib/rateLimit";
 import { sanitizeText } from "@/lib/sanitize";
+import { isUsingLocalDb } from "@/lib/db";
+import { signInWithSupabase } from "@/lib/supabaseAuth";
+import { session } from "@/lib/session";
+import { audit } from "@/lib/audit";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
@@ -71,8 +75,47 @@ function LoginPage() {
     e.preventDefault();
     setCredError("");
     setIsLoadingCred(true);
+
+    const cleanEmail = sanitizeText(email).toLowerCase();
+
+    // ── Production path: real Supabase Auth (no simulated 2FA) ──
+    if (!isUsingLocalDb()) {
+      const rate = rateLimit.check(cleanEmail);
+      if (!rate.allowed && rate.lockedUntil) {
+        setIsLoadingCred(false);
+        setLockedUntil(rate.lockedUntil);
+        setStep("locked");
+        return;
+      }
+      signInWithSupabase(cleanEmail, password)
+        .then((res) => {
+          setIsLoadingCred(false);
+          if (!res.ok) {
+            const fail = rateLimit.fail(cleanEmail);
+            if (fail.locked && fail.lockedUntil) {
+              setLockedUntil(fail.lockedUntil);
+              setStep("locked");
+            } else {
+              setAttemptsLeft(fail.attemptsLeft);
+              setCredError(res.error);
+            }
+            return;
+          }
+          rateLimit.reset(cleanEmail);
+          session.set(res.user, rememberMe);
+          audit.log("2fa_success", res.user.email, res.user.role, "supabase_auth");
+          toast.success(`Bienvenido/a, ${res.user.nombre}.`);
+          navigate({ to: "/" });
+        })
+        .catch(() => {
+          setIsLoadingCred(false);
+          setCredError("Error de conexión. Intentá de nuevo.");
+        });
+      return;
+    }
+
+    // ── Demo path: mock auth with simulated 2FA ──
     setTimeout(() => {
-      const cleanEmail = sanitizeText(email).toLowerCase();
       const result = auth.loginStep1(cleanEmail, password);
       setIsLoadingCred(false);
 
