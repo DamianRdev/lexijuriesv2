@@ -61,6 +61,29 @@ export async function signInWithSupabase(
   return { ok: true, user };
 }
 
+// Change the current user's password. Requires an active Supabase session
+// (i.e. logged in via Supabase Auth, not mock mode). RLS/Auth verifies the session.
+export async function changePassword(
+  newPassword: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: false, error: "Supabase no está configurado." };
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("at least") || msg.includes("weak") || msg.includes("password"))
+      return { ok: false, error: "La contraseña es demasiado débil (mínimo 6 caracteres)." };
+    if (msg.includes("session") || msg.includes("not authenticated") || msg.includes("jwt"))
+      return { ok: false, error: "Tu sesión expiró. Cerrá sesión y volvé a entrar." };
+    if (msg.includes("same"))
+      return { ok: false, error: "La nueva contraseña no puede ser igual a la actual." };
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true };
+}
+
 // Clear the Supabase session (used on logout). Safe to call when not configured.
 export async function signOutSupabase(): Promise<void> {
   if (!supabase) return;

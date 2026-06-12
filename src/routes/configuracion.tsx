@@ -20,12 +20,15 @@ import {
   Trash2,
   ShieldCheck,
   ShieldAlert,
+  KeyRound,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { ToggleRow } from "@/components/ToggleRow";
 import { isUsingLocalDb, setUsingLocalDb } from "@/lib/db";
 import { audit, type AuditEntry } from "@/lib/audit";
 import { auth } from "@/lib/auth";
+import { changePassword } from "@/lib/supabaseAuth";
 import { prefs, type ThemeMode } from "@/lib/prefs";
 import { toast } from "sonner";
 
@@ -51,6 +54,33 @@ function ConfiguracionPage() {
   const [localDb, setLocalDb] = useState(isUsingLocalDb());
   const [auditLog, setAuditLog] = useState<AuditEntry[]>(() => audit.getAll());
   const isSocio = auth.getUser()?.role === "Socio";
+
+  // Cambio de contraseña
+  const [pwOpen, setPwOpen] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isUsingLocalDb()) {
+      toast.info("El cambio de contraseña solo está disponible en modo nube (Supabase).");
+      return;
+    }
+    if (newPw.length < 6) { toast.warning("La contraseña debe tener al menos 6 caracteres."); return; }
+    if (newPw !== confirmPw) { toast.warning("Las contraseñas no coinciden."); return; }
+    setPwSaving(true);
+    const res = await changePassword(newPw);
+    setPwSaving(false);
+    if (res.ok) {
+      toast.success("Contraseña actualizada correctamente.");
+      setPwOpen(false);
+      setNewPw("");
+      setConfirmPw("");
+    } else {
+      toast.error(res.error ?? "No se pudo cambiar la contraseña.");
+    }
+  };
 
   const handleTheme = (mode: ThemeMode) => {
     setTheme(mode);
@@ -262,6 +292,12 @@ function ConfiguracionPage() {
               <DataRow label="Usuario" value={auth.getUser()?.email ?? "—"} />
               <DataRow label="Rol" value={auth.getUser()?.role ?? "—"} />
             </dl>
+            <button
+              onClick={() => setPwOpen(true)}
+              className="w-full mt-4 flex items-center justify-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer"
+            >
+              <KeyRound className="h-3.5 w-3.5" /> Cambiar contraseña
+            </button>
           </Card>
         </div>
       </div>
@@ -270,6 +306,56 @@ function ConfiguracionPage() {
         <SettingsIcon className="h-3.5 w-3.5" />
         LexPanel v1.0
       </div>
+
+      {/* ── Modal Cambiar Contraseña ─────────────────── */}
+      {pwOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overlay-fade">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/10">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-primary" /> Cambiar contraseña
+              </h3>
+              <button onClick={() => setPwOpen(false)} className="text-muted-foreground hover:text-foreground rounded-lg p-1.5 hover:bg-muted transition-colors cursor-pointer">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="p-5 space-y-4">
+              {isUsingLocalDb() && (
+                <p className="text-[11px] rounded-md px-3 py-2" style={{ background: "oklch(0.18 0.07 65)", color: "oklch(0.80 0.14 65)" }}>
+                  Estás en modo local (demo). El cambio de contraseña solo aplica en modo nube (Supabase).
+                </p>
+              )}
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Nueva contraseña</label>
+                <input
+                  type="password" autoFocus value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Confirmar contraseña</label>
+                <input
+                  type="password" value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  placeholder="Repetir la nueva contraseña"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setPwOpen(false)} className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-all active:scale-95 cursor-pointer">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={pwSaving} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95 cursor-pointer disabled:opacity-50">
+                  {pwSaving ? "Guardando..." : "Cambiar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
