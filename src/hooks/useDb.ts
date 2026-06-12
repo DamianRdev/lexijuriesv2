@@ -58,6 +58,21 @@ export function useUpdateCausa() {
   });
 }
 
+export function useDeleteCausa() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await delay(100);
+      await db.deleteCausa(id);
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.invalidateQueries({ queryKey: ["causas"] });
+      queryClient.removeQueries({ queryKey: ["causa", id] });
+    },
+  });
+}
+
 export function useClientes() {
   return useQuery({
     queryKey: ["clientes"],

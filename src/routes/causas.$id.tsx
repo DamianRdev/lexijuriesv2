@@ -12,12 +12,19 @@ import {
   User,
   Building2,
   ShieldOff,
+  Pencil,
+  Trash2,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import {
   getAbogado,
   formatFechaCorta,
+  abogados,
   type EstadoVencimiento,
   type Materia,
+  type EstadoCausa,
+  type Causa,
 } from "@/lib/mockData";
 import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
@@ -26,6 +33,7 @@ import { audit } from "@/lib/audit";
 import {
   useCausa,
   useUpdateCausa,
+  useDeleteCausa,
   useTareas,
   useAddTarea,
   useUpdateTarea,
@@ -33,6 +41,9 @@ import {
   useClientes,
 } from "@/hooks/useDb";
 import { auth } from "@/lib/auth";
+
+const MATERIAS_STD: Materia[] = ["Civil", "Laboral", "Familia", "Comercial"];
+const ESTADOS_CAUSA: EstadoCausa[] = ["Activo", "Archivado", "Sentencia"];
 
 export const Route = createFileRoute("/causas/$id")({
   component: CausaDetalle,
@@ -72,6 +83,7 @@ function CausaDetalle() {
   const { data: clientesData = [], isLoading: isLoadingClientes } = useClientes();
 
   const updateCausaMutation = useUpdateCausa();
+  const deleteCausaMutation = useDeleteCausa();
   const addTareaMutation = useAddTarea();
   const updateTareaMutation = useUpdateTarea();
 
@@ -79,6 +91,11 @@ function CausaDetalle() {
   const [nuevaNota, setNuevaNota] = useState("");
   const [nuevaTareaText, setNuevaTareaText] = useState("");
   const [nuevaTareaPrioridad, setNuevaTareaPrioridad] = useState<"Alta" | "Media" | "Baja">("Media");
+
+  // Edit / delete modals
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [edit, setEdit] = useState<Partial<Causa>>({});
 
   const activeUser = auth.getUser();
 
@@ -159,6 +176,53 @@ function CausaDetalle() {
     });
   };
 
+  // RBAC: Socio o el abogado responsable pueden editar/eliminar.
+  const canEdit = !!activeUser && (activeUser.role === "Socio" || causa.abogadoId === activeUser.abogadoId);
+
+  const openEdit = () => {
+    setEdit({
+      caratula: causa.caratula,
+      materia: causa.materia,
+      estado: causa.estado,
+      juzgado: causa.juzgado,
+      secretaria: causa.secretaria,
+      abogadoId: causa.abogadoId,
+      clienteRol: causa.clienteRol,
+    });
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!edit.caratula?.trim()) { toast.warning("La carátula no puede estar vacía."); return; }
+    const materiaFinal = (edit.materia as string)?.trim() || causa.materia;
+    updateCausaMutation.mutate(
+      { ...causa, ...edit, caratula: edit.caratula.trim(), materia: materiaFinal },
+      {
+        onSuccess: () => {
+          if (activeUser) audit.log("update_causa", activeUser.email, activeUser.role, `exp:${causa.expediente}`);
+          toast.success("Causa actualizada.");
+          setEditOpen(false);
+        },
+        onError: () => toast.error("Error al guardar los cambios."),
+      },
+    );
+  };
+
+  const handleDelete = () => {
+    deleteCausaMutation.mutate(causa.id, {
+      onSuccess: () => {
+        if (activeUser) audit.log("delete_causa", activeUser.email, activeUser.role, `exp:${causa.expediente}`);
+        toast.success("Causa eliminada.", { description: causa.expediente });
+        navigate({ to: "/causas" });
+      },
+      onError: () => {
+        toast.error("Error al eliminar la causa.");
+        setDeleteOpen(false);
+      },
+    });
+  };
+
   return (
     <div className="max-w-[1400px] mx-auto">
 
@@ -202,9 +266,33 @@ function CausaDetalle() {
               </span>
             )}
           </div>
-          <h1 className="font-serif text-2xl sm:text-3xl lg:text-[2.1rem] text-foreground tracking-tight leading-tight">
-            {causa.caratula}
-          </h1>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h1 className="font-serif text-2xl sm:text-3xl lg:text-[2.1rem] text-foreground tracking-tight leading-tight">
+              {causa.caratula}
+            </h1>
+            {canEdit && (
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={openEdit}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all active:scale-95 cursor-pointer"
+                  style={{ background: "var(--color-accent)", border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; e.currentTarget.style.color = "var(--color-primary)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.color = "var(--color-foreground)"; }}
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Editar
+                </button>
+                <button
+                  onClick={() => setDeleteOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all active:scale-95 cursor-pointer text-destructive"
+                  style={{ background: "transparent", border: "1px solid oklch(0.61 0.24 22 / 0.3)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "oklch(0.61 0.24 22 / 0.08)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                </button>
+              </div>
+            )}
+          </div>
           <p className="mt-2 text-xs text-muted-foreground flex flex-wrap gap-4">
             <span>Juzgado: <strong className="text-foreground/80">{causa.juzgado}</strong></span>
             <span>Resp: <strong className="text-foreground/80">{abogado?.nombre ?? "—"}</strong></span>
@@ -518,6 +606,136 @@ function CausaDetalle() {
           </div>
         </div>
       </div>
+
+      {/* ── Modal Editar Causa ───────────────────────── */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overlay-fade">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/10">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <Pencil className="h-4 w-4 text-primary" /> Editar Causa
+              </h3>
+              <button onClick={() => setEditOpen(false)} className="text-muted-foreground hover:text-foreground rounded-lg p-1.5 hover:bg-muted transition-colors cursor-pointer">
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Carátula</label>
+                <input
+                  type="text" required value={edit.caratula ?? ""}
+                  onChange={(e) => setEdit((p) => ({ ...p, caratula: e.target.value }))}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Materia</label>
+                  <input
+                    type="text" list="materias-list" value={(edit.materia as string) ?? ""}
+                    onChange={(e) => setEdit((p) => ({ ...p, materia: e.target.value }))}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  />
+                  <datalist id="materias-list">
+                    {MATERIAS_STD.map((m) => <option key={m} value={m} />)}
+                  </datalist>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Estado</label>
+                  <select
+                    value={edit.estado as string} onChange={(e) => setEdit((p) => ({ ...p, estado: e.target.value as EstadoCausa }))}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  >
+                    {ESTADOS_CAUSA.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Juzgado</label>
+                  <input
+                    type="text" value={edit.juzgado ?? ""}
+                    onChange={(e) => setEdit((p) => ({ ...p, juzgado: e.target.value }))}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Secretaría</label>
+                  <input
+                    type="text" value={edit.secretaria ?? ""}
+                    onChange={(e) => setEdit((p) => ({ ...p, secretaria: e.target.value }))}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Abogado Responsable</label>
+                  <select
+                    value={edit.abogadoId ?? ""} onChange={(e) => setEdit((p) => ({ ...p, abogadoId: e.target.value }))}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  >
+                    {abogados.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Rol del Cliente</label>
+                  <select
+                    value={edit.clienteRol ?? "Actor"} onChange={(e) => setEdit((p) => ({ ...p, clienteRol: e.target.value as "Actor" | "Demandado" }))}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  >
+                    <option value="Actor">Actor</option>
+                    <option value="Demandado">Demandado</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
+                <button type="button" onClick={() => setEditOpen(false)} className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-all active:scale-95 cursor-pointer">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={updateCausaMutation.isPending} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95 cursor-pointer disabled:opacity-50">
+                  {updateCausaMutation.isPending ? "Guardando..." : "Guardar Cambios"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Eliminar Causa ─────────────────────── */}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overlay-fade">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "oklch(0.17 0.08 22)", border: "1px solid oklch(0.61 0.24 22 / 0.35)" }}>
+                  <AlertTriangle className="h-5 w-5" style={{ color: "oklch(0.72 0.20 22)" }} />
+                </div>
+                <h3 className="font-semibold text-foreground">Eliminar causa</h3>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-1">
+                ¿Seguro que querés eliminar el expediente <strong className="text-foreground font-mono">{causa.expediente}</strong>?
+              </p>
+              <p className="text-xs text-muted-foreground mb-5">
+                Esta acción no se puede deshacer. Se eliminarán también sus notas y movimientos.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setDeleteOpen(false)} className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-all active:scale-95 cursor-pointer">
+                  Cancelar
+                </button>
+                <button onClick={handleDelete} disabled={deleteCausaMutation.isPending} className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all active:scale-95 cursor-pointer disabled:opacity-50" style={{ background: "oklch(0.55 0.22 22)" }}>
+                  {deleteCausaMutation.isPending ? "Eliminando..." : "Sí, eliminar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
