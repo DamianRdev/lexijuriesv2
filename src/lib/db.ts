@@ -244,6 +244,18 @@ export const db = {
     if (error) console.error("Error saving vencimientos in Supabase:", error);
   },
 
+  deleteVencimiento: async (id: string): Promise<void> => {
+    if (isUsingLocalDb() || !supabase) {
+      mockDb.setVencimientos(mockDb.getVencimientos().filter((v) => v.id !== id));
+      return;
+    }
+    const { error } = await supabase.from("vencimientos").delete().eq("id", id);
+    if (error) {
+      console.error("Error deleting vencimiento in Supabase:", error);
+      throw error;
+    }
+  },
+
   getTareas: async (): Promise<Tarea[]> => {
     if (isUsingLocalDb() || !supabase) return mockDb.getTareas();
     const { data, error } = await supabase.from("tareas").select("*");
@@ -278,6 +290,18 @@ export const db = {
     }));
     const { error } = await (supabase as any).from("tareas").upsert(rows as any);
     if (error) console.error("Error saving tareas in Supabase:", error);
+  },
+
+  deleteTarea: async (id: string): Promise<void> => {
+    if (isUsingLocalDb() || !supabase) {
+      mockDb.setTareas(mockDb.getTareas().filter((t) => t.id !== id));
+      return;
+    }
+    const { error } = await supabase.from("tareas").delete().eq("id", id);
+    if (error) {
+      console.error("Error deleting tarea in Supabase:", error);
+      throw error;
+    }
   },
 
   getAbogados: async (): Promise<Abogado[]> => {

@@ -11,8 +11,10 @@ import {
   FolderOpen,
   User,
   X,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
-import { useTareas, useCausas, useAddTarea, useUpdateTarea } from "@/hooks/useDb";
+import { useTareas, useCausas, useAddTarea, useUpdateTarea, useDeleteTarea } from "@/hooks/useDb";
 import { abogados, type Tarea } from "@/lib/mockData";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,8 +31,25 @@ function TareasPage() {
 
   const addTareaMutation = useAddTarea();
   const updateTareaMutation = useUpdateTarea();
+  const deleteTareaMutation = useDeleteTarea();
   const user = auth.getUser();
   const isSocio = user?.role === "Socio";
+
+  const [deleteTarget, setDeleteTarget] = useState<Tarea | null>(null);
+
+  const handleDeleteTarea = () => {
+    if (!deleteTarget) return;
+    deleteTareaMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        toast.success("Tarea eliminada.");
+        setDeleteTarget(null);
+      },
+      onError: () => {
+        toast.error("Error al eliminar la tarea.");
+        setDeleteTarget(null);
+      },
+    });
+  };
 
   const [q, setQ] = useState("");
   const [filterCausa, setFilterCausa] = useState("");
@@ -235,6 +254,15 @@ function TareasPage() {
                     >
                       {t.prioridad}
                     </span>
+                    {isSocio && (
+                      <button
+                        onClick={() => setDeleteTarget(t)}
+                        title="Eliminar tarea"
+                        className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 );
               })
@@ -272,7 +300,7 @@ function TareasPage() {
                 const c = causasData.find((causa) => causa.id === t.causaId);
                 const ab = abogados.find((abogado) => abogado.id === t.abogadoId);
                 return (
-                  <div key={t.id} className="flex items-start gap-3.5 pt-3.5 first:pt-0">
+                  <div key={t.id} className="flex items-start gap-3.5 pt-3.5 first:pt-0 group">
                     <button
                       onClick={() => toggleTareaStatus(t)}
                       className="mt-0.5 transition-colors cursor-pointer shrink-0 touch-target flex items-center justify-center"
@@ -295,6 +323,15 @@ function TareasPage() {
                         </span>
                       </div>
                     </div>
+                    {isSocio && (
+                      <button
+                        onClick={() => setDeleteTarget(t)}
+                        title="Eliminar tarea"
+                        className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 );
               })
@@ -420,6 +457,33 @@ function TareasPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Eliminar Tarea */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overlay-fade">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "oklch(0.17 0.08 22)", border: "1px solid oklch(0.61 0.24 22 / 0.35)" }}>
+                  <AlertTriangle className="h-5 w-5" style={{ color: "oklch(0.72 0.20 22)" }} />
+                </div>
+                <h3 className="font-semibold text-foreground">Eliminar tarea</h3>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+                ¿Seguro que querés eliminar la tarea <strong className="text-foreground">"{deleteTarget.descripcion}"</strong>? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setDeleteTarget(null)} className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-all active:scale-95 cursor-pointer">
+                  Cancelar
+                </button>
+                <button onClick={handleDeleteTarea} disabled={deleteTareaMutation.isPending} className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all active:scale-95 cursor-pointer disabled:opacity-50" style={{ background: "oklch(0.55 0.22 22)" }}>
+                  {deleteTareaMutation.isPending ? "Eliminando..." : "Sí, eliminar"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

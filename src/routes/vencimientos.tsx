@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Calendar, AlertCircle } from "lucide-react";
-import { abogados, getAbogado, formatFechaCorta, type EstadoVencimiento } from "@/lib/mockData";
-import { useVencimientos } from "@/hooks/useDb";
+import { ChevronLeft, ChevronRight, Calendar, AlertCircle, Plus, X, Trash2, AlertTriangle } from "lucide-react";
+import { abogados, getAbogado, formatFechaCorta, type EstadoVencimiento, type Vencimiento } from "@/lib/mockData";
+import { useVencimientos, useCausas, useAddVencimiento, useDeleteVencimiento } from "@/hooks/useDb";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import { auth } from "@/lib/auth";
 
 export const Route = createFileRoute("/vencimientos")({
   component: VencimientosPage,
@@ -22,6 +24,11 @@ const dotStyle: Record<EstadoVencimiento, React.CSSProperties> = {
 
 function VencimientosPage() {
   const { data: vencimientosData = [], isLoading } = useVencimientos();
+  const { data: causasData = [] } = useCausas();
+
+  const addVencimientoMutation = useAddVencimiento();
+  const deleteVencimientoMutation = useDeleteVencimiento();
+  const isSocio = auth.getUser()?.role === "Socio";
 
   const [month, setMonth] = useState(() => {
     const now = new Date();
@@ -29,6 +36,63 @@ function VencimientosPage() {
   });
   const [filterAb, setFilterAb] = useState("");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  // Alta de vencimiento
+  const [isOpen, setIsOpen] = useState(false);
+  const [vCausaId, setVCausaId] = useState("");
+  const [vFecha, setVFecha] = useState("");
+  const [vDescripcion, setVDescripcion] = useState("");
+  const [vEstado, setVEstado] = useState<EstadoVencimiento>("Próximo");
+
+  // Eliminar
+  const [deleteTarget, setDeleteTarget] = useState<Vencimiento | null>(null);
+
+  const handleCreateVencimiento = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vCausaId || !vFecha || !vDescripcion.trim()) {
+      toast.warning("Completá la causa, la fecha y la descripción.");
+      return;
+    }
+    const causa = causasData.find((c) => c.id === vCausaId);
+    if (!causa) {
+      toast.error("La causa seleccionada no es válida.");
+      return;
+    }
+    const nuevo: Vencimiento = {
+      id: `ven-${Date.now()}`,
+      fecha: vFecha,
+      descripcion: vDescripcion.trim(),
+      causaId: causa.id,
+      expediente: causa.expediente,
+      abogadoId: causa.abogadoId,
+      estado: vEstado,
+    };
+    addVencimientoMutation.mutate(nuevo, {
+      onSuccess: () => {
+        toast.success("Vencimiento registrado.");
+        setIsOpen(false);
+        setVCausaId("");
+        setVFecha("");
+        setVDescripcion("");
+        setVEstado("Próximo");
+      },
+      onError: () => toast.error("Error al registrar el vencimiento."),
+    });
+  };
+
+  const handleDeleteVencimiento = () => {
+    if (!deleteTarget) return;
+    deleteVencimientoMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        toast.success("Vencimiento eliminado.");
+        setDeleteTarget(null);
+      },
+      onError: () => {
+        toast.error("Error al eliminar el vencimiento.");
+        setDeleteTarget(null);
+      },
+    });
+  };
 
   const year = month.getFullYear();
   const m = month.getMonth();
@@ -128,6 +192,15 @@ function VencimientosPage() {
               </option>
             ))}
           </select>
+
+          {isSocio && (
+            <button
+              onClick={() => setIsOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all shadow-sm cursor-pointer shrink-0 touch-target"
+            >
+              <Plus className="h-4 w-4" /> Agregar Vencimiento
+            </button>
+          )}
         </div>
       </div>
 
@@ -229,12 +302,23 @@ function VencimientosPage() {
                         <span className="font-mono text-[10px] font-semibold text-muted-foreground">
                           Exp. {v.expediente}
                         </span>
-                        <span
-                          className="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide uppercase"
-                          style={badgeStyle[v.estado]}
-                        >
-                          {v.estado}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide uppercase"
+                            style={badgeStyle[v.estado]}
+                          >
+                            {v.estado}
+                          </span>
+                          {isSocio && (
+                            <button
+                              onClick={() => setDeleteTarget(v)}
+                              title="Eliminar vencimiento"
+                              className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-sm font-semibold text-foreground leading-snug group-hover:text-primary transition-colors">
                         {v.descripcion}
@@ -247,6 +331,106 @@ function VencimientosPage() {
                   );
                 })
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Agregar Vencimiento */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overlay-fade">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/10">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <Calendar className="h-4.5 w-4.5 text-primary" /> Registrar Vencimiento
+              </h3>
+              <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground rounded-lg p-1.5 hover:bg-muted transition-colors cursor-pointer">
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateVencimiento} className="p-5 space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Causa / Expediente</label>
+                <select
+                  required value={vCausaId} onChange={(e) => setVCausaId(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                >
+                  <option value="">Seleccioná el expediente...</option>
+                  {causasData.map((c) => (
+                    <option key={c.id} value={c.id}>Exp. {c.expediente} — {c.caratula.slice(0, 35)}…</option>
+                  ))}
+                </select>
+                {causasData.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1">No hay causas cargadas. Primero registrá una causa.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Descripción del plazo</label>
+                <input
+                  type="text" required value={vDescripcion} onChange={(e) => setVDescripcion(e.target.value)}
+                  placeholder="Ej. Vence traslado de la demanda"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Fecha límite</label>
+                  <input
+                    type="date" required value={vFecha} onChange={(e) => setVFecha(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Estado</label>
+                  <select
+                    value={vEstado} onChange={(e) => setVEstado(e.target.value as EstadoVencimiento)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/40 focus:ring-primary/10 shadow-sm"
+                  >
+                    <option value="Próximo">Próximo</option>
+                    <option value="Crítico">Crítico</option>
+                    <option value="Cumplido">Cumplido</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
+                <button type="button" onClick={() => setIsOpen(false)} className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-all active:scale-95 cursor-pointer">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={addVencimientoMutation.isPending} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95 cursor-pointer disabled:opacity-50">
+                  {addVencimientoMutation.isPending ? "Guardando..." : "Guardar Vencimiento"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Eliminar Vencimiento */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overlay-fade">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "oklch(0.17 0.08 22)", border: "1px solid oklch(0.61 0.24 22 / 0.35)" }}>
+                  <AlertTriangle className="h-5 w-5" style={{ color: "oklch(0.72 0.20 22)" }} />
+                </div>
+                <h3 className="font-semibold text-foreground">Eliminar vencimiento</h3>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+                ¿Seguro que querés eliminar <strong className="text-foreground">"{deleteTarget.descripcion}"</strong> (Exp. {deleteTarget.expediente})? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setDeleteTarget(null)} className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-all active:scale-95 cursor-pointer">
+                  Cancelar
+                </button>
+                <button onClick={handleDeleteVencimiento} disabled={deleteVencimientoMutation.isPending} className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all active:scale-95 cursor-pointer disabled:opacity-50" style={{ background: "oklch(0.55 0.22 22)" }}>
+                  {deleteVencimientoMutation.isPending ? "Eliminando..." : "Sí, eliminar"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

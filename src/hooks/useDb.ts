@@ -172,6 +172,21 @@ export function useUpdateTarea() {
   });
 }
 
+export function useDeleteTarea() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await delay(100);
+      await db.deleteTarea(id);
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tareas"] });
+      queryClient.invalidateQueries({ queryKey: ["causas"] });
+    },
+  });
+}
+
 export function useVencimientos() {
   return useQuery({
     queryKey: ["vencimientos"],
@@ -179,6 +194,35 @@ export function useVencimientos() {
     queryFn: async () => {
       await delay(150);
       return db.getVencimientos();
+    },
+  });
+}
+
+export function useAddVencimiento() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (nuevoVencimiento: Vencimiento) => {
+      await delay(100);
+      const vencimientos = await db.getVencimientos();
+      await db.setVencimientos([...vencimientos, nuevoVencimiento]);
+      return nuevoVencimiento;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vencimientos"] });
+    },
+  });
+}
+
+export function useDeleteVencimiento() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await delay(100);
+      await db.deleteVencimiento(id);
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vencimientos"] });
     },
   });
 }
