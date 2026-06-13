@@ -99,6 +99,36 @@ export function useAddCliente() {
   });
 }
 
+export function useUpdateCliente() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (clienteActualizado: Cliente) => {
+      await delay(100);
+      const clientes = await db.getClientes();
+      const updated = clientes.map((c) => (c.id === clienteActualizado.id ? clienteActualizado : c));
+      await db.setClientes(updated);
+      return clienteActualizado;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    },
+  });
+}
+
+export function useDeleteCliente() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await delay(100);
+      await db.deleteCliente(id);
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    },
+  });
+}
+
 export function useTareas() {
   return useQuery({
     queryKey: ["tareas"],

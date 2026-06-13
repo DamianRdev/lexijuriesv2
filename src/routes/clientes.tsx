@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Search, Plus, Contact, Mail, Phone, MapPin, Building2, User, X } from "lucide-react";
-import { useClientes, useCausas, useAddCliente } from "@/hooks/useDb";
+import { Search, Plus, Contact, Mail, Phone, MapPin, Building2, User, X, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { useClientes, useCausas, useAddCliente, useUpdateCliente, useDeleteCliente } from "@/hooks/useDb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { type Cliente } from "@/lib/mockData";
@@ -17,6 +17,8 @@ function ClientesPage() {
   const { data: causasData = [], isLoading: isLoadingCausas } = useCausas();
 
   const addClienteMutation = useAddCliente();
+  const updateClienteMutation = useUpdateCliente();
+  const deleteClienteMutation = useDeleteCliente();
   const user = auth.getUser();
   const isSocio = user?.role === "Socio";
 
@@ -25,12 +27,16 @@ function ClientesPage() {
 
   // Modal state
   const [isOpen, setIsOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [nombre, setNombre] = useState("");
   const [tipo, setTipo] = useState<"Física" | "Jurídica">("Física");
   const [cuit, setCuit] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [direccion, setDireccion] = useState("");
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
 
   const isLoading = isLoadingClientes || isLoadingCausas;
 
@@ -45,6 +51,32 @@ function ClientesPage() {
     return matchesQuery && matchesTipo;
   });
 
+  const resetForm = () => {
+    setEditId(null);
+    setNombre("");
+    setTipo("Física");
+    setCuit("");
+    setEmail("");
+    setTelefono("");
+    setDireccion("");
+  };
+
+  const openNew = () => {
+    resetForm();
+    setIsOpen(true);
+  };
+
+  const openEdit = (cl: Cliente) => {
+    setEditId(cl.id);
+    setNombre(cl.nombre);
+    setTipo(cl.tipo);
+    setCuit(cl.cuit);
+    setEmail(cl.email);
+    setTelefono(cl.telefono);
+    setDireccion(cl.direccion);
+    setIsOpen(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim() || !cuit.trim()) {
@@ -52,8 +84,7 @@ function ClientesPage() {
       return;
     }
 
-    const nuevoCliente: Cliente = {
-      id: `cli-${Date.now()}`,
+    const datos = {
       nombre: nombre.trim(),
       tipo,
       cuit: cuit.trim(),
@@ -62,23 +93,48 @@ function ClientesPage() {
       direccion: direccion.trim(),
     };
 
-    addClienteMutation.mutate(nuevoCliente, {
+    if (editId) {
+      updateClienteMutation.mutate(
+        { id: editId, ...datos },
+        {
+          onSuccess: () => {
+            toast.success("Cliente actualizado.");
+            setIsOpen(false);
+            resetForm();
+          },
+          onError: () => toast.error("Error al actualizar cliente."),
+        },
+      );
+    } else {
+      addClienteMutation.mutate(
+        { id: `cli-${Date.now()}`, ...datos },
+        {
+          onSuccess: () => {
+            toast.success("Cliente registrado con éxito.");
+            setIsOpen(false);
+            resetForm();
+          },
+          onError: () => toast.error("Error al registrar cliente."),
+        },
+      );
+    }
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    deleteClienteMutation.mutate(deleteTarget.id, {
       onSuccess: () => {
-        toast.success("Cliente registrado con éxito.");
-        setIsOpen(false);
-        // Reset form
-        setNombre("");
-        setTipo("Física");
-        setCuit("");
-        setEmail("");
-        setTelefono("");
-        setDireccion("");
+        toast.success("Cliente eliminado.", { description: deleteTarget.nombre });
+        setDeleteTarget(null);
       },
       onError: () => {
-        toast.error("Error al registrar cliente.");
+        toast.error("Error al eliminar cliente.");
+        setDeleteTarget(null);
       },
     });
   };
+
+  const isSaving = addClienteMutation.isPending || updateClienteMutation.isPending;
 
   return (
     <div className="px-4 py-5 sm:px-6 sm:py-7 md:px-8 md:py-8 lg:px-10 max-w-[1400px] mx-auto space-y-5 sm:space-y-6">
@@ -94,7 +150,7 @@ function ClientesPage() {
         </div>
         {isSocio && (
           <button
-            onClick={() => setIsOpen(true)}
+            onClick={openNew}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all shadow-sm cursor-pointer shrink-0 touch-target"
           >
             <Plus className="h-4 w-4" /> Agregar Cliente
@@ -137,6 +193,7 @@ function ClientesPage() {
                 <th className="px-5 py-3.5 hidden md:table-cell">Contacto</th>
                 <th className="px-5 py-3.5 hidden lg:table-cell">Dirección</th>
                 <th className="px-5 py-3.5 text-center">Causas Activas</th>
+                {isSocio && <th className="px-5 py-3.5 text-right">Acciones</th>}
               </tr>
             </thead>
             <tbody>
@@ -161,6 +218,11 @@ function ClientesPage() {
                       <td className="px-5 py-4 text-center">
                         <Skeleton className="h-4 w-8 mx-auto" />
                       </td>
+                      {isSocio && (
+                        <td className="px-5 py-4">
+                          <Skeleton className="h-4 w-12 ml-auto" />
+                        </td>
+                      )}
                     </tr>
                   ))
                 : filtered.map((cl) => {
@@ -225,12 +287,32 @@ function ClientesPage() {
                             {activeCases}
                           </span>
                         </td>
+                        {isSocio && (
+                          <td className="px-5 py-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => openEdit(cl)}
+                                title="Editar cliente"
+                                className="rounded-md p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget(cl)}
+                                title="Eliminar cliente"
+                                className="rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
               {!isLoading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-16 text-center text-sm text-muted-foreground">
+                  <td colSpan={isSocio ? 6 : 5} className="px-5 py-16 text-center text-sm text-muted-foreground">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Contact className="h-8 w-8 text-muted-foreground/50" />
                       <p>No se encontraron clientes registrados en el directorio.</p>
@@ -250,7 +332,9 @@ function ClientesPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/10">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <Contact className="h-4.5 w-4.5 text-primary" /> Registrar Nuevo Cliente
+                {editId
+                  ? <><Pencil className="h-4 w-4 text-primary" /> Editar Cliente</>
+                  : <><Contact className="h-4.5 w-4.5 text-primary" /> Registrar Nuevo Cliente</>}
               </h3>
               <button
                 onClick={() => setIsOpen(false)}
@@ -355,13 +439,43 @@ function ClientesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={addClienteMutation.isPending}
+                  disabled={isSaving}
                   className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95 cursor-pointer disabled:opacity-50 touch-target"
                 >
-                  {addClienteMutation.isPending ? "Registrando..." : "Guardar Cliente"}
+                  {isSaving ? "Guardando..." : editId ? "Guardar Cambios" : "Guardar Cliente"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Eliminar Cliente ───────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overlay-fade">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "oklch(0.17 0.08 22)", border: "1px solid oklch(0.61 0.24 22 / 0.35)" }}>
+                  <AlertTriangle className="h-5 w-5" style={{ color: "oklch(0.72 0.20 22)" }} />
+                </div>
+                <h3 className="font-semibold text-foreground">Eliminar cliente</h3>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-1">
+                ¿Seguro que querés eliminar a <strong className="text-foreground">{deleteTarget.nombre}</strong>?
+              </p>
+              <p className="text-xs text-muted-foreground mb-5">
+                Esta acción no se puede deshacer. Las causas asociadas no se borran, pero quedarán sin cliente vinculado.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setDeleteTarget(null)} className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-all active:scale-95 cursor-pointer">
+                  Cancelar
+                </button>
+                <button onClick={handleDelete} disabled={deleteClienteMutation.isPending} className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all active:scale-95 cursor-pointer disabled:opacity-50" style={{ background: "oklch(0.55 0.22 22)" }}>
+                  {deleteClienteMutation.isPending ? "Eliminando..." : "Sí, eliminar"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

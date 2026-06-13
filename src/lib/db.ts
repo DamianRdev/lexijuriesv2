@@ -195,6 +195,18 @@ export const db = {
     if (error) console.error("Error saving clientes in Supabase:", error);
   },
 
+  deleteCliente: async (id: string): Promise<void> => {
+    if (isUsingLocalDb() || !supabase) {
+      mockDb.setClientes(mockDb.getClientes().filter((c) => c.id !== id));
+      return;
+    }
+    const { error } = await supabase.from("clientes").delete().eq("id", id);
+    if (error) {
+      console.error("Error deleting cliente in Supabase:", error);
+      throw error;
+    }
+  },
+
   getVencimientos: async (): Promise<Vencimiento[]> => {
     if (isUsingLocalDb() || !supabase) return mockDb.getVencimientos();
     const { data, error } = await supabase.from("vencimientos").select("*");
