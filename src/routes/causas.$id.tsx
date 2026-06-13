@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import {
   ChevronRight,
   FileText,
   Download,
+  Upload,
   Inbox,
   CalendarDays,
   StickyNote,
@@ -41,6 +42,7 @@ import {
   useClientes,
 } from "@/hooks/useDb";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 
 const MATERIAS_STD: Materia[] = ["Civil", "Laboral", "Familia", "Comercial"];
 const ESTADOS_CAUSA: EstadoCausa[] = ["Activo", "Archivado", "Sentencia"];
@@ -96,6 +98,10 @@ function CausaDetalle() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [edit, setEdit] = useState<Partial<Causa>>({});
+
+  // Documentos
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const activeUser = auth.getUser();
 
@@ -221,6 +227,47 @@ function CausaDetalle() {
         setDeleteOpen(false);
       },
     });
+  };
+
+  const handleUploadFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const doc = await db.uploadDocumento(causa.id, file);
+      await updateCausaMutation.mutateAsync({ ...causa, documentos: [doc, ...causa.documentos] });
+      if (activeUser) audit.log("download_doc", activeUser.email, activeUser.role, `subió ${file.name}`);
+      toast.success("Documento subido.", { description: file.name });
+    } catch {
+      toast.error("Error al subir el documento.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDownloadDoc = async (doc: { nombre: string; path?: string }) => {
+    if (!doc.path) {
+      toast.info("Documento de demostración (sin archivo real adjunto).");
+      return;
+    }
+    const url = await db.getDocumentoUrl(doc.path);
+    if (url) {
+      window.open(url, "_blank", "noopener");
+    } else {
+      toast.error("No se pudo generar el enlace de descarga.");
+    }
+  };
+
+  const handleDeleteDoc = async (doc: { id: string; path?: string }) => {
+    try {
+      if (doc.path) await db.removeDocumento(doc.path);
+      await updateCausaMutation.mutateAsync({
+        ...causa,
+        documentos: causa.documentos.filter((d: any) => d.id !== doc.id),
+      });
+      toast.success("Documento eliminado.");
+    } catch {
+      toast.error("Error al eliminar el documento.");
+    }
   };
 
   return (
@@ -429,33 +476,65 @@ function CausaDetalle() {
 
             {/* DOCS */}
             {tab === "docs" && (
-              causa.documentos.length === 0
-                ? <EmptyState icon={Inbox} description="No hay documentos cargados en esta causa." />
-                : <ul className="divide-y divide-border">
-                    {causa.documentos.map((d: any) => {
-                      const DocIcon = getDocIcon(d.tipo);
-                      return (
-                        <li key={d.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 group">
-                          <div className="rounded-lg p-2.5 shrink-0"
-                            style={{ background: "oklch(0.155 0.016 275)", color: "oklch(0.62 0.22 282)" }}>
-                            <DocIcon className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">{d.nombre}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              <span className="font-mono">{d.tipo}</span> · {formatFechaCorta(d.fecha)}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => toast.success(`Descarga iniciada: ${d.nombre}`)}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer shrink-0 px-2 py-1 rounded-md hover:bg-primary/10"
-                          >
-                            <Download className="h-3.5 w-3.5" /> Descargar
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
+              <div className="space-y-4">
+                {canEdit && (
+                  <div className="flex items-center justify-between gap-3 pb-3" style={{ borderBottom: "1px solid var(--color-border)" }}>
+                    <p className="text-xs text-muted-foreground">Subí escritos, cédulas, pericias u otros archivos (PDF, imágenes, etc.)</p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadFile(f); }}
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                    >
+                      <Upload className="h-3.5 w-3.5" /> {uploading ? "Subiendo..." : "Subir documento"}
+                    </button>
+                  </div>
+                )}
+
+                {causa.documentos.length === 0
+                  ? <EmptyState icon={Inbox} description="No hay documentos cargados en esta causa." />
+                  : <ul className="divide-y divide-border">
+                      {causa.documentos.map((d: any) => {
+                        const DocIcon = getDocIcon(d.tipo);
+                        return (
+                          <li key={d.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 group">
+                            <div className="rounded-lg p-2.5 shrink-0"
+                              style={{ background: "oklch(0.155 0.016 275)", color: "oklch(0.62 0.22 282)" }}>
+                              <DocIcon className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">{d.nombre}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                <span className="font-mono">{d.tipo}</span> · {formatFechaCorta(d.fecha)}
+                                {!d.path && <span className="ml-1 italic">· demo</span>}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleDownloadDoc(d)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer shrink-0 px-2 py-1 rounded-md hover:bg-primary/10"
+                            >
+                              <Download className="h-3.5 w-3.5" /> Descargar
+                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => handleDeleteDoc(d)}
+                                title="Eliminar documento"
+                                className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                }
+              </div>
             )}
 
             {/* VENCIMIENTOS */}

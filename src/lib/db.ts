@@ -10,6 +10,7 @@ import {
   type Vencimiento,
   type Tarea,
   type Abogado,
+  type Documento,
 } from "./mockData";
 
 const isClient = typeof window !== "undefined";
@@ -317,5 +318,41 @@ export const db = {
       iniciales: a.iniciales,
       especialidades: a.especialidades || [],
     }));
+  },
+
+  // ── Documentos (Supabase Storage, bucket "documentos") ──
+  // En modo local solo se guarda la metadata (sin archivo real).
+  uploadDocumento: async (causaId: string, file: File): Promise<Documento> => {
+    const doc: Documento = {
+      id: `doc-${Date.now()}`,
+      nombre: file.name,
+      fecha: new Date().toISOString().split("T")[0],
+      tipo: (file.name.split(".").pop() || "FILE").toUpperCase(),
+    };
+    if (isUsingLocalDb() || !supabase) return doc;
+
+    const path = `${causaId}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("documentos").upload(path, file);
+    if (error) {
+      console.error("Error uploading documento to Storage:", error);
+      throw error;
+    }
+    return { ...doc, path };
+  },
+
+  getDocumentoUrl: async (path: string): Promise<string | null> => {
+    if (!supabase) return null;
+    const { data, error } = await supabase.storage.from("documentos").createSignedUrl(path, 60);
+    if (error) {
+      console.error("Error creating signed URL:", error);
+      return null;
+    }
+    return data.signedUrl;
+  },
+
+  removeDocumento: async (path: string): Promise<void> => {
+    if (!supabase) return;
+    const { error } = await supabase.storage.from("documentos").remove([path]);
+    if (error) console.error("Error removing documento from Storage:", error);
   },
 };

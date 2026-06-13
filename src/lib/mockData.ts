@@ -33,6 +33,7 @@ export interface Documento {
   nombre: string;
   fecha: string;
   tipo: string;
+  path?: string; // ruta en Supabase Storage (ausente en documentos de demo)
 }
 
 export interface Nota {
