@@ -213,6 +213,22 @@ export function useAddVencimiento() {
   });
 }
 
+export function useUpdateVencimiento() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vencimientoActualizado: Vencimiento) => {
+      await delay(100);
+      const vencimientos = await db.getVencimientos();
+      const updated = vencimientos.map((v) => (v.id === vencimientoActualizado.id ? vencimientoActualizado : v));
+      await db.setVencimientos(updated);
+      return vencimientoActualizado;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vencimientos"] });
+    },
+  });
+}
+
 export function useDeleteVencimiento() {
   const queryClient = useQueryClient();
   return useMutation({

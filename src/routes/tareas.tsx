@@ -13,6 +13,7 @@ import {
   X,
   Trash2,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 import { useTareas, useCausas, useAddTarea, useUpdateTarea, useDeleteTarea } from "@/hooks/useDb";
 import { abogados, type Tarea } from "@/lib/mockData";
@@ -57,6 +58,7 @@ function TareasPage() {
 
   // Modal form state
   const [isOpen, setIsOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [descripcion, setDescripcion] = useState("");
   const [causaId, setCausaId] = useState("");
   const [abogadoId, setAbogadoId] = useState("");
@@ -85,39 +87,74 @@ function TareasPage() {
     });
   };
 
-  const handleCreateTarea = (e: React.FormEvent) => {
+  const resetTareaForm = () => {
+    setEditId(null);
+    setDescripcion("");
+    setCausaId("");
+    setAbogadoId("");
+    setFechaLimite("");
+    setPrioridad("Media");
+  };
+
+  const openNewTarea = () => {
+    resetTareaForm();
+    setIsOpen(true);
+  };
+
+  const openEditTarea = (t: Tarea) => {
+    setEditId(t.id);
+    setDescripcion(t.descripcion);
+    setCausaId(t.causaId);
+    setAbogadoId(t.abogadoId);
+    setFechaLimite(t.fechaLimite);
+    setPrioridad(t.prioridad);
+    setIsOpen(true);
+  };
+
+  const handleSubmitTarea = (e: React.FormEvent) => {
     e.preventDefault();
     if (!descripcion.trim() || !causaId || !abogadoId || !fechaLimite) {
       toast.warning("Por favor completa todos los campos del formulario.");
       return;
     }
 
-    const nuevaTarea: Tarea = {
-      id: `tar-${Date.now()}`,
+    const datos = {
       descripcion: descripcion.trim(),
       causaId,
       abogadoId,
       fechaLimite,
-      completada: false,
       prioridad,
     };
 
-    addTareaMutation.mutate(nuevaTarea, {
-      onSuccess: () => {
-        toast.success("Tarea registrada correctamente en el estudio.");
-        setIsOpen(false);
-        // Reset form
-        setDescripcion("");
-        setCausaId("");
-        setAbogadoId("");
-        setFechaLimite("");
-        setPrioridad("Media");
-      },
-      onError: () => {
-        toast.error("Error al registrar la tarea.");
-      },
-    });
+    if (editId) {
+      const original = tareasData.find((t) => t.id === editId);
+      updateTareaMutation.mutate(
+        { id: editId, ...datos, completada: original?.completada ?? false },
+        {
+          onSuccess: () => {
+            toast.success("Tarea actualizada.");
+            setIsOpen(false);
+            resetTareaForm();
+          },
+          onError: () => toast.error("Error al actualizar la tarea."),
+        },
+      );
+    } else {
+      addTareaMutation.mutate(
+        { id: `tar-${Date.now()}`, ...datos, completada: false },
+        {
+          onSuccess: () => {
+            toast.success("Tarea registrada correctamente en el estudio.");
+            setIsOpen(false);
+            resetTareaForm();
+          },
+          onError: () => toast.error("Error al registrar la tarea."),
+        },
+      );
+    }
   };
+
+  const isSavingTarea = addTareaMutation.isPending || updateTareaMutation.isPending;
 
   return (
     <div className="px-4 py-5 sm:px-6 sm:py-7 md:px-8 md:py-8 lg:px-10 max-w-[1400px] mx-auto space-y-5 sm:space-y-6">
@@ -135,7 +172,7 @@ function TareasPage() {
         </div>
         {isSocio && (
           <button
-            onClick={() => setIsOpen(true)}
+            onClick={openNewTarea}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all shadow-sm cursor-pointer shrink-0 touch-target"
           >
             <Plus className="h-4 w-4" /> Asignar Tarea
@@ -255,13 +292,22 @@ function TareasPage() {
                       {t.prioridad}
                     </span>
                     {isSocio && (
-                      <button
-                        onClick={() => setDeleteTarget(t)}
-                        title="Eliminar tarea"
-                        className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => openEditTarea(t)}
+                          title="Editar tarea"
+                          className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(t)}
+                          title="Eliminar tarea"
+                          className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
                     )}
                   </div>
                 );
@@ -347,7 +393,9 @@ function TareasPage() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/10">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <ListTodo className="h-4.5 w-4.5 text-primary" /> Asignar Tarea del Estudio
+                {editId
+                  ? <><Pencil className="h-4 w-4 text-primary" /> Editar Tarea</>
+                  : <><ListTodo className="h-4.5 w-4.5 text-primary" /> Asignar Tarea del Estudio</>}
               </h3>
               <button
                 onClick={() => setIsOpen(false)}
@@ -358,7 +406,7 @@ function TareasPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleCreateTarea} className="p-5 space-y-4">
+            <form onSubmit={handleSubmitTarea} className="p-5 space-y-4">
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
                   Descripción de la Tarea
@@ -450,10 +498,10 @@ function TareasPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={addTareaMutation.isPending}
+                  disabled={isSavingTarea}
                   className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95 cursor-pointer disabled:opacity-50 touch-target"
                 >
-                  {addTareaMutation.isPending ? "Asignando..." : "Asignar Tarea"}
+                  {isSavingTarea ? "Guardando..." : editId ? "Guardar Cambios" : "Asignar Tarea"}
                 </button>
               </div>
             </form>

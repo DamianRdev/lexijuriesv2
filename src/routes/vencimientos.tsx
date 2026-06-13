@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Calendar, AlertCircle, Plus, X, Trash2, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, AlertCircle, Plus, X, Trash2, AlertTriangle, Pencil } from "lucide-react";
 import { abogados, getAbogado, formatFechaCorta, type EstadoVencimiento, type Vencimiento } from "@/lib/mockData";
-import { useVencimientos, useCausas, useAddVencimiento, useDeleteVencimiento } from "@/hooks/useDb";
+import { useVencimientos, useCausas, useAddVencimiento, useUpdateVencimiento, useDeleteVencimiento } from "@/hooks/useDb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { auth } from "@/lib/auth";
@@ -27,6 +27,7 @@ function VencimientosPage() {
   const { data: causasData = [] } = useCausas();
 
   const addVencimientoMutation = useAddVencimiento();
+  const updateVencimientoMutation = useUpdateVencimiento();
   const deleteVencimientoMutation = useDeleteVencimiento();
   const isSocio = auth.getUser()?.role === "Socio";
 
@@ -37,8 +38,9 @@ function VencimientosPage() {
   const [filterAb, setFilterAb] = useState("");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  // Alta de vencimiento
+  // Alta / edición de vencimiento
   const [isOpen, setIsOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [vCausaId, setVCausaId] = useState("");
   const [vFecha, setVFecha] = useState("");
   const [vDescripcion, setVDescripcion] = useState("");
@@ -47,7 +49,29 @@ function VencimientosPage() {
   // Eliminar
   const [deleteTarget, setDeleteTarget] = useState<Vencimiento | null>(null);
 
-  const handleCreateVencimiento = (e: React.FormEvent) => {
+  const resetVForm = () => {
+    setEditId(null);
+    setVCausaId("");
+    setVFecha("");
+    setVDescripcion("");
+    setVEstado("Próximo");
+  };
+
+  const openNewVencimiento = () => {
+    resetVForm();
+    setIsOpen(true);
+  };
+
+  const openEditVencimiento = (v: Vencimiento) => {
+    setEditId(v.id);
+    setVCausaId(v.causaId);
+    setVFecha(v.fecha);
+    setVDescripcion(v.descripcion);
+    setVEstado(v.estado);
+    setIsOpen(true);
+  };
+
+  const handleSubmitVencimiento = (e: React.FormEvent) => {
     e.preventDefault();
     if (!vCausaId || !vFecha || !vDescripcion.trim()) {
       toast.warning("Completá la causa, la fecha y la descripción.");
@@ -58,8 +82,7 @@ function VencimientosPage() {
       toast.error("La causa seleccionada no es válida.");
       return;
     }
-    const nuevo: Vencimiento = {
-      id: `ven-${Date.now()}`,
+    const datos = {
       fecha: vFecha,
       descripcion: vDescripcion.trim(),
       causaId: causa.id,
@@ -67,18 +90,35 @@ function VencimientosPage() {
       abogadoId: causa.abogadoId,
       estado: vEstado,
     };
-    addVencimientoMutation.mutate(nuevo, {
-      onSuccess: () => {
-        toast.success("Vencimiento registrado.");
-        setIsOpen(false);
-        setVCausaId("");
-        setVFecha("");
-        setVDescripcion("");
-        setVEstado("Próximo");
-      },
-      onError: () => toast.error("Error al registrar el vencimiento."),
-    });
+
+    if (editId) {
+      updateVencimientoMutation.mutate(
+        { id: editId, ...datos },
+        {
+          onSuccess: () => {
+            toast.success("Vencimiento actualizado.");
+            setIsOpen(false);
+            resetVForm();
+          },
+          onError: () => toast.error("Error al actualizar el vencimiento."),
+        },
+      );
+    } else {
+      addVencimientoMutation.mutate(
+        { id: `ven-${Date.now()}`, ...datos },
+        {
+          onSuccess: () => {
+            toast.success("Vencimiento registrado.");
+            setIsOpen(false);
+            resetVForm();
+          },
+          onError: () => toast.error("Error al registrar el vencimiento."),
+        },
+      );
+    }
   };
+
+  const isSavingVenc = addVencimientoMutation.isPending || updateVencimientoMutation.isPending;
 
   const handleDeleteVencimiento = () => {
     if (!deleteTarget) return;
@@ -195,7 +235,7 @@ function VencimientosPage() {
 
           {isSocio && (
             <button
-              onClick={() => setIsOpen(true)}
+              onClick={openNewVencimiento}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all shadow-sm cursor-pointer shrink-0 touch-target"
             >
               <Plus className="h-4 w-4" /> Agregar Vencimiento
@@ -310,13 +350,22 @@ function VencimientosPage() {
                             {v.estado}
                           </span>
                           {isSocio && (
-                            <button
-                              onClick={() => setDeleteTarget(v)}
-                              title="Eliminar vencimiento"
-                              className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => openEditVencimiento(v)}
+                                title="Editar vencimiento"
+                                className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget(v)}
+                                title="Eliminar vencimiento"
+                                className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -342,14 +391,16 @@ function VencimientosPage() {
           <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/10">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <Calendar className="h-4.5 w-4.5 text-primary" /> Registrar Vencimiento
+                {editId
+                  ? <><Pencil className="h-4 w-4 text-primary" /> Editar Vencimiento</>
+                  : <><Calendar className="h-4.5 w-4.5 text-primary" /> Registrar Vencimiento</>}
               </h3>
               <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground rounded-lg p-1.5 hover:bg-muted transition-colors cursor-pointer">
                 <X className="h-4.5 w-4.5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateVencimiento} className="p-5 space-y-4">
+            <form onSubmit={handleSubmitVencimiento} className="p-5 space-y-4">
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Causa / Expediente</label>
                 <select
@@ -400,8 +451,8 @@ function VencimientosPage() {
                 <button type="button" onClick={() => setIsOpen(false)} className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-all active:scale-95 cursor-pointer">
                   Cancelar
                 </button>
-                <button type="submit" disabled={addVencimientoMutation.isPending} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95 cursor-pointer disabled:opacity-50">
-                  {addVencimientoMutation.isPending ? "Guardando..." : "Guardar Vencimiento"}
+                <button type="submit" disabled={isSavingVenc} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95 cursor-pointer disabled:opacity-50">
+                  {isSavingVenc ? "Guardando..." : editId ? "Guardar Cambios" : "Guardar Vencimiento"}
                 </button>
               </div>
             </form>
