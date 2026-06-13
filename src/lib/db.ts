@@ -18,10 +18,11 @@ const isClient = typeof window !== "undefined";
 export function isUsingLocalDb(): boolean {
   if (!isClient) return true;
   const val = localStorage.getItem("lexpanel_use_local_db");
-  // Default to true (Local Mock) if not set, so mock data loads by default!
+  // Default to Supabase (producción) so el estudio entra directo con sus
+  // credenciales reales. El modo local queda como opción en Configuración.
   if (val === null) {
-    localStorage.setItem("lexpanel_use_local_db", "true");
-    return true;
+    localStorage.setItem("lexpanel_use_local_db", "false");
+    return false;
   }
   return val === "true";
 }
