@@ -33,3 +33,13 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Claude Code / herramientas locales
+.claude/
+docs/
+
+# Documentación con credenciales — NO subir (contraseñas en texto plano)
+DOCUMENTACION.md
+
+# Proyecto anidado (no forma parte de este repo)
+lexi-juris/
